@@ -1,14 +1,74 @@
 import { useState, useEffect, useRef } from 'react';
-import { HiPlus, HiPencil, HiTrash, HiCheckCircle, HiXCircle, HiKey, HiCpuChip, HiShieldCheck, HiEye, HiEyeSlash, HiChevronDown, HiChevronUp, HiArrowUpTray } from 'react-icons/hi2';
+import { HiPlus, HiPencil, HiTrash, HiCheckCircle, HiXCircle, HiKey, HiCpuChip, HiShieldCheck, HiEye, HiEyeSlash, HiChevronDown, HiChevronUp, HiArrowUpTray, HiClipboard } from 'react-icons/hi2';
 import api from '../api';
 
 const FRAMEWORK_TABS = [
+    { key: 'modules', label: 'Modules', icon: '⚙️' },
     { key: 'llm', label: 'LLM Connections', icon: '🤖' },
+    { key: 'api_keys', label: 'API Keys', icon: '🔑' },
     { key: 'eval', label: 'Evaluation', icon: '📊' },
     { key: 'sox', label: 'SOX', icon: '📊' },
     { key: 'hipaa', label: 'HIPAA', icon: '🏥' },
     { key: 'gdpr', label: 'GDPR', icon: '🇪🇺' },
     { key: 'pci_dss', label: 'PCI-DSS', icon: '💳' },
+];
+
+const MODULE_DEFINITIONS = [
+    {
+        key: 'policies',
+        name: 'Access Policies',
+        icon: '🛡️',
+        description: 'Role-based access control for agent invocations. The policy engine evaluates every gateway request against configured policies to allow or deny access.',
+        middleware: 'policyEnforcer',
+        pipelineStage: 'Gateway Pipeline',
+        sidebarPages: ['Policies'],
+        warning: 'Disabling this means ALL gateway requests will be allowed without access checks. Use with extreme caution.',
+        severity: 'critical',
+    },
+    {
+        key: 'guardrails',
+        name: 'Guardrails',
+        icon: '🚧',
+        description: 'Input/output validation rules that detect PII, toxicity, prompt injection, and custom patterns. Guardrails can block or flag requests before they reach agents.',
+        middleware: 'guardrailEnforcer',
+        pipelineStage: 'Gateway Pipeline',
+        sidebarPages: ['Guardrails'],
+        warning: null,
+        severity: 'high',
+    },
+    {
+        key: 'compliance',
+        name: 'Compliance',
+        icon: '📋',
+        description: 'Automated compliance sampling and auditing against SOX, HIPAA, GDPR, and PCI-DSS frameworks. Samples gateway traffic for compliance checks.',
+        middleware: 'complianceSampler',
+        pipelineStage: 'Gateway Pipeline',
+        sidebarPages: ['Compliance'],
+        warning: null,
+        severity: 'medium',
+    },
+    {
+        key: 'cost_management',
+        name: 'Cost Management',
+        icon: '💰',
+        description: 'Budget enforcement, cost tracking, and spending analytics. The budget checker validates token/cost limits before allowing agent invocations.',
+        middleware: 'budgetChecker',
+        pipelineStage: 'Gateway Pipeline',
+        sidebarPages: ['Cost Management'],
+        warning: 'Disabling this removes all budget limits — agents can be invoked without cost restrictions.',
+        severity: 'high',
+    },
+    {
+        key: 'evaluations',
+        name: 'Evaluations',
+        icon: '📊',
+        description: 'Agent quality evaluation with rule-based and LLM-as-a-Judge scoring. Runs on-demand evaluation suites to measure accuracy, safety, and consistency.',
+        middleware: null,
+        pipelineStage: 'On-Demand',
+        sidebarPages: ['Evaluations'],
+        warning: null,
+        severity: 'low',
+    },
 ];
 
 const LLM_PROVIDERS = [
@@ -48,6 +108,19 @@ export default function Settings() {
     const [evalSettings, setEvalSettings] = useState(null);
     const [savingEval, setSavingEval] = useState(false);
     const [newPattern, setNewPattern] = useState('');
+
+    // API Keys state
+    const [apiKeys, setApiKeys] = useState([]);
+    const [showKeyModal, setShowKeyModal] = useState(false);
+    const [newKeyName, setNewKeyName] = useState('');
+    const [newKeyRole, setNewKeyRole] = useState('viewer');
+    const [createdKey, setCreatedKey] = useState(null);
+    const [savingKey, setSavingKey] = useState(false);
+    const [keyCopied, setKeyCopied] = useState(false);
+
+    // Module toggle state
+    const [moduleStates, setModuleStates] = useState({});
+    const [togglingModule, setTogglingModule] = useState(null);
 
     const DEFAULT_EVAL_SETTINGS = {
         rule_based: {
@@ -101,6 +174,21 @@ CRITICAL RULES:
             if (activeTab === 'llm') {
                 const res = await api.getSettings('llm');
                 setLlmSettings(res.data || []);
+            } else if (activeTab === 'modules') {
+                try {
+                    const res = await api.getSettings('modules');
+                    const states = {};
+                    (res.data || []).forEach(s => {
+                        const val = typeof s.value === 'string' ? JSON.parse(s.value) : s.value;
+                        states[s.key] = val;
+                    });
+                    setModuleStates(states);
+                } catch { setModuleStates({}); }
+            } else if (activeTab === 'api_keys') {
+                try {
+                    const res = await api.listApiKeys();
+                    setApiKeys(res.data || []);
+                } catch { setApiKeys([]); }
             } else if (activeTab === 'eval') {
                 try {
                     const res = await api.getSettings('evaluation');
@@ -272,6 +360,134 @@ CRITICAL RULES:
 
             {loading ? (
                 <div className="empty-state"><div className="icon">⏳</div><h4>Loading...</h4></div>
+            ) : activeTab === 'modules' ? (
+                /* =============================== MODULE TOGGLES TAB =============================== */
+                <div style={{ display: 'grid', gap: 16 }}>
+                    <div className="card" style={{ padding: 20 }}>
+                        <h3 style={{ margin: '0 0 8px', fontSize: 16 }}>⚙️ Module Configuration</h3>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0, lineHeight: 1.6 }}>
+                            Enable or disable AgentShield governance modules. Disabled modules are completely bypassed in the gateway pipeline
+                            and their pages are hidden from the sidebar. All data is preserved — re-enabling a module restores full functionality instantly.
+                        </p>
+                    </div>
+
+                    {MODULE_DEFINITIONS.map(mod => {
+                        const isEnabled = moduleStates[mod.key]?.enabled !== false;
+                        const isToggling = togglingModule === mod.key;
+                        const severityColors = { critical: '#ef4444', high: '#f59e0b', medium: '#6366f1', low: '#10b981' };
+
+                        return (
+                            <div key={mod.key} className="card" style={{
+                                overflow: 'hidden',
+                                border: !isEnabled ? '1px solid var(--border-color)' : `1px solid ${severityColors[mod.severity]}33`,
+                                opacity: isEnabled ? 1 : 0.75,
+                                transition: 'all 0.3s ease',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', padding: 20, gap: 16 }}>
+                                    {/* Icon */}
+                                    <div style={{
+                                        width: 48, height: 48, borderRadius: 12, display: 'flex', alignItems: 'center',
+                                        justifyContent: 'center', fontSize: 24, flexShrink: 0,
+                                        background: isEnabled ? `${severityColors[mod.severity]}15` : 'var(--bg-input)',
+                                        border: `1px solid ${isEnabled ? severityColors[mod.severity] + '30' : 'var(--border-color)'}`,
+                                    }}>
+                                        {mod.icon}
+                                    </div>
+
+                                    {/* Content */}
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                                            <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{mod.name}</h4>
+                                            <span className={`badge ${isEnabled ? 'green' : 'gray'}`} style={{ fontSize: 10 }}>
+                                                {isEnabled ? '● Enabled' : '○ Disabled'}
+                                            </span>
+                                            {mod.middleware && (
+                                                <span className="badge blue" style={{ fontSize: 10 }}>{mod.pipelineStage}</span>
+                                            )}
+                                            {!mod.middleware && (
+                                                <span className="badge gray" style={{ fontSize: 10 }}>{mod.pipelineStage}</span>
+                                            )}
+                                        </div>
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6, margin: '0 0 10px' }}>
+                                            {mod.description}
+                                        </p>
+                                        <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)' }}>
+                                            {mod.middleware && (
+                                                <span>Middleware: <code style={{ background: 'var(--bg-input)', padding: '1px 6px', borderRadius: 4 }}>{mod.middleware}</code></span>
+                                            )}
+                                            <span>Pages: {mod.sidebarPages.join(', ')}</span>
+                                        </div>
+
+                                        {/* Warning for critical modules */}
+                                        {mod.warning && !isEnabled && (
+                                            <div style={{
+                                                marginTop: 10, padding: '8px 12px', borderRadius: 8, fontSize: 12,
+                                                background: mod.severity === 'critical' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+                                                color: mod.severity === 'critical' ? '#ef4444' : '#f59e0b',
+                                                border: `1px solid ${mod.severity === 'critical' ? 'rgba(239,68,68,0.25)' : 'rgba(245,158,11,0.25)'}`,
+                                            }}>
+                                                ⚠️ {mod.warning}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Toggle */}
+                                    <div style={{ flexShrink: 0, paddingTop: 4 }}>
+                                        <button
+                                            disabled={isToggling}
+                                            onClick={async () => {
+                                                if (mod.severity === 'critical' && isEnabled) {
+                                                    if (!confirm(`⚠️ WARNING: ${mod.warning}\n\nAre you sure you want to disable ${mod.name}?`)) return;
+                                                }
+                                                setTogglingModule(mod.key);
+                                                try {
+                                                    const newVal = { enabled: !isEnabled };
+                                                    await api.upsertSetting({
+                                                        category: 'modules',
+                                                        key: mod.key,
+                                                        value: newVal,
+                                                        description: `${mod.name} module toggle`,
+                                                    });
+                                                    setModuleStates(prev => ({ ...prev, [mod.key]: newVal }));
+                                                } catch (err) { alert('Error: ' + err.message); }
+                                                finally { setTogglingModule(null); }
+                                            }}
+                                            style={{
+                                                width: 52, height: 28, borderRadius: 14, border: 'none', cursor: isToggling ? 'wait' : 'pointer',
+                                                position: 'relative', transition: 'background 0.3s',
+                                                background: isEnabled ? 'var(--accent-primary)' : 'var(--bg-tertiary, #3a3a4a)',
+                                            }}
+                                        >
+                                            <div style={{
+                                                width: 22, height: 22, borderRadius: '50%', background: 'white',
+                                                position: 'absolute', top: 3,
+                                                left: isEnabled ? 27 : 3,
+                                                transition: 'left 0.3s ease',
+                                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                                            }} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {/* Summary footer */}
+                    {(() => {
+                        const disabledCount = MODULE_DEFINITIONS.filter(m => moduleStates[m.key]?.enabled === false).length;
+                        if (disabledCount === 0) return null;
+                        return (
+                            <div style={{
+                                padding: '12px 16px', borderRadius: 10, fontSize: 13,
+                                background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)',
+                                color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 8,
+                            }}>
+                                ⚠️ <strong>{disabledCount} module{disabledCount > 1 ? 's' : ''}</strong> currently disabled.
+                                Disabled modules are bypassed in the gateway pipeline and hidden from the sidebar.
+                            </div>
+                        );
+                    })()}
+                </div>
             ) : activeTab === 'llm' ? (
                 /* =============================== LLM CONNECTIONS TAB =============================== */
                 <div className="card">
@@ -323,6 +539,50 @@ CRITICAL RULES:
                             </tbody>
                         </table>
                     )}
+                </div>
+            ) : activeTab === 'api_keys' ? (
+                /* =============================== API KEYS TAB =============================== */
+                <div className="card">
+                    <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3><HiKey style={{ marginRight: 8 }} />API Keys</h3>
+                        <button className="btn btn-primary btn-sm" onClick={() => { setNewKeyName(''); setNewKeyRole('viewer'); setCreatedKey(null); setKeyCopied(false); setShowKeyModal(true); }}>
+                            <HiPlus /> Create API Key
+                        </button>
+                    </div>
+
+                    {apiKeys.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="icon">🔑</div>
+                            <h4>No API keys created</h4>
+                            <p>Create an API key to allow external agents to call the Policy Validation API</p>
+                        </div>
+                    ) : (
+                        <table className="data-table">
+                            <thead><tr><th>Name</th><th>Key Prefix</th><th>Role</th><th>Scopes</th><th>Status</th><th>Last Used</th><th>Created</th><th>Actions</th></tr></thead>
+                            <tbody>
+                                {apiKeys.map(k => (
+                                    <tr key={k.id}>
+                                        <td style={{ fontWeight: 600 }}>{k.name}</td>
+                                        <td><code style={{ background: 'var(--bg-input)', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>{k.key_prefix}••••</code></td>
+                                        <td><span className="badge blue">{k.role}</span></td>
+                                        <td>{(k.scopes || []).map((s, i) => <span key={i} className="badge green" style={{ marginRight: 4, fontSize: 10 }}>{s}</span>)}</td>
+                                        <td>{k.is_active ? <span className="badge green">Active</span> : <span className="badge red">Revoked</span>}</td>
+                                        <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{k.last_used_at ? new Date(k.last_used_at).toLocaleDateString() : 'Never'}</td>
+                                        <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(k.created_at).toLocaleDateString()}</td>
+                                        <td>
+                                            <button className="btn-icon" onClick={async () => {
+                                                if (!confirm(`Revoke API key "${k.name}"? This cannot be undone.`)) return;
+                                                try { await api.revokeApiKey(k.id); await loadTabData(); } catch (err) { alert(err.message); }
+                                            }} title="Revoke"><HiTrash style={{ color: 'var(--color-error)' }} /></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                    <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: 12 }}>
+                        API keys authenticate requests to <code style={{ background: 'var(--bg-input)', padding: '1px 4px', borderRadius: 3 }}>POST /api/v1/gateway/policy/check</code>
+                    </div>
                 </div>
             ) : activeTab === 'eval' ? (
                 /* =============================== EVALUATION SETTINGS TAB =============================== */
@@ -788,6 +1048,68 @@ CRITICAL RULES:
                         <div className="modal-footer">
                             <button className="btn btn-secondary" onClick={() => setDeleteConfirm(null)}>Cancel</button>
                             <button className="btn" style={{ background: 'var(--color-error)', color: 'white' }} onClick={confirmDelete}>Delete Rule</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* =============================== API KEY CREATION MODAL =============================== */}
+            {showKeyModal && (
+                <div className="modal-overlay" onClick={() => setShowKeyModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+                        <div className="modal-header"><h3>🔑 {createdKey ? 'API Key Created' : 'Create API Key'}</h3><button className="btn-icon" onClick={() => setShowKeyModal(false)}>✕</button></div>
+                        <div className="modal-body">
+                            {createdKey ? (
+                                <div>
+                                    <div style={{ padding: '16px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 10, marginBottom: 16 }}>
+                                        <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <HiCheckCircle /> Key Created Successfully
+                                        </div>
+                                        <div style={{ background: 'var(--bg-card)', borderRadius: 8, padding: '10px 12px', fontFamily: 'monospace', fontSize: 13, wordBreak: 'break-all', border: '1px solid var(--border-color)' }}>
+                                            {createdKey}
+                                        </div>
+                                        <button className="btn btn-secondary btn-sm" style={{ marginTop: 10 }}
+                                            onClick={() => { navigator.clipboard.writeText(createdKey); setKeyCopied(true); }}>
+                                            <HiClipboard /> {keyCopied ? '✅ Copied!' : 'Copy Key'}
+                                        </button>
+                                    </div>
+                                    <div style={{ padding: '10px 14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 8, fontSize: 12, color: '#b45309' }}>
+                                        ⚠️ <strong>Save this key now.</strong> It will not be shown again. If lost, you'll need to create a new key.
+                                    </div>
+                                </div>
+                            ) : (
+                                <div>
+                                    <div className="form-group">
+                                        <label>Key Name</label>
+                                        <input className="form-input" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} placeholder="e.g. my-agent-key" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Role</label>
+                                        <select className="form-select" value={newKeyRole} onChange={e => setNewKeyRole(e.target.value)}>
+                                            <option value="viewer">Viewer</option>
+                                            <option value="editor">Editor</option>
+                                            <option value="admin">Admin</option>
+                                        </select>
+                                    </div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+                                        Scope: <span className="badge green" style={{ fontSize: 10 }}>policy:check</span> — allows calling the policy validation endpoint
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setShowKeyModal(false)}>{createdKey ? 'Close' : 'Cancel'}</button>
+                            {!createdKey && (
+                                <button className="btn btn-primary" disabled={savingKey || !newKeyName} onClick={async () => {
+                                    setSavingKey(true);
+                                    try {
+                                        const res = await api.createApiKey({ name: newKeyName, role: newKeyRole, scopes: ['policy:check'] });
+                                        setCreatedKey(res.data.key);
+                                        await loadTabData();
+                                    } catch (err) { alert(err.message); }
+                                    finally { setSavingKey(false); }
+                                }}>{savingKey ? 'Creating...' : 'Create Key'}</button>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentShield — Gateway Governance Latency Analysis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --surface-2: #22252f;
+            --border: #2d3040;
+            --text: #e1e4eb;
+            --text-muted: #8b8fa3;
+            --accent: #6c8cff;
+            --accent-glow: rgba(108, 140, 255, 0.15);
+            --green: #34d399;
+            --green-bg: rgba(52, 211, 153, 0.1);
+            --amber: #fbbf24;
+            --amber-bg: rgba(251, 191, 36, 0.1);
+            --red: #f87171;
+            --red-bg: rgba(248, 113, 113, 0.1);
+            --blue: #60a5fa;
+            --blue-bg: rgba(96, 165, 250, 0.1);
+            --purple: #a78bfa;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            padding: 0;
+        }
+
+        /* ── Header ── */
+        .hero {
+            background: linear-gradient(135deg, #1a1d27 0%, #0f1117 50%, #151825 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 60px 40px 50px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -20%;
+            width: 140%;
+            height: 200%;
+            background: radial-gradient(ellipse at center, var(--accent-glow) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .hero h1 {
+            font-size: 2.4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+        }
+        .hero .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-top: 12px;
+            position: relative;
+        }
+        .hero .meta {
+            margin-top: 20px;
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            position: relative;
+        }
+        .hero .meta span {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            background: var(--surface-2);
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        /* ── Layout ── */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 40px 32px 80px;
+        }
+
+        /* ── TOC ── */
+        .toc {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px 32px;
+            margin-bottom: 48px;
+        }
+        .toc h2 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+        .toc ol {
+            padding-left: 20px;
+            columns: 2;
+            column-gap: 40px;
+        }
+        .toc li {
+            margin-bottom: 8px;
+            break-inside: avoid;
+        }
+        .toc a {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.92rem;
+        }
+        .toc a:hover { text-decoration: underline; }
+
+        /* ── Sections ── */
+        section {
+            margin-bottom: 56px;
+        }
+        h2 {
+            font-size: 1.55rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+            color: #fff;
+        }
+        h2 .num {
+            color: var(--accent);
+            margin-right: 8px;
+        }
+        h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin: 28px 0 12px;
+            color: #dde0e8;
+        }
+        h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 20px 0 8px;
+            color: var(--text-muted);
+        }
+        p {
+            margin-bottom: 14px;
+            color: var(--text);
+        }
+
+        /* ── Tables ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0 24px;
+            font-size: 0.88rem;
+        }
+        thead th {
+            background: var(--surface-2);
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.8px;
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 2px solid var(--border);
+        }
+        tbody td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        tbody tr:hover {
+            background: rgba(108, 140, 255, 0.04);
+        }
+        td code {
+            background: var(--surface-2);
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            color: var(--purple);
+        }
+
+        /* ── Code blocks ── */
+        pre {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px 24px;
+            overflow-x: auto;
+            margin: 16px 0 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            line-height: 1.65;
+            color: #c9cdd7;
+        }
+        pre .kw { color: var(--purple); }
+        pre .fn { color: var(--accent); }
+        pre .str { color: var(--green); }
+        pre .cmt { color: #555b6e; font-style: italic; }
+        pre .num { color: var(--amber); }
+
+        /* ── Alert boxes ── */
+        .alert {
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin: 16px 0 20px;
+            font-size: 0.9rem;
+            border-left: 4px solid;
+        }
+        .alert-important {
+            background: var(--amber-bg);
+            border-color: var(--amber);
+        }
+        .alert-important .alert-title { color: var(--amber); }
+        .alert-warning {
+            background: var(--red-bg);
+            border-color: var(--red);
+        }
+        .alert-warning .alert-title { color: var(--red); }
+        .alert-tip {
+            background: var(--green-bg);
+            border-color: var(--green);
+        }
+        .alert-tip .alert-title { color: var(--green); }
+        .alert-note {
+            background: var(--blue-bg);
+            border-color: var(--blue);
+        }
+        .alert-note .alert-title { color: var(--blue); }
+        .alert-caution {
+            background: var(--red-bg);
+            border-color: var(--red);
+        }
+        .alert-caution .alert-title { color: var(--red); }
+        .alert-title {
+            font-weight: 700;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 6px;
+        }
+
+        /* ── Mermaid ── */
+        .mermaid-wrapper {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 16px 0 24px;
+            text-align: center;
+            overflow-x: auto;
+        }
+
+        /* ── Highlight row ── */
+        .highlight-row { background: rgba(108, 140, 255, 0.06) !important; }
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-green { background: var(--green-bg); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+        .badge-red { background: var(--red-bg); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+        .badge-amber { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+        .badge-blue { background: var(--blue-bg); color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
+        .badge-purple { background: rgba(167,139,250,0.1); color: var(--purple); border: 1px solid rgba(167,139,250,0.3); }
+
+        /* ── Comparison grid ── */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0 24px;
+        }
+        .comparison-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .comparison-card h4 {
+            margin: 0 0 12px;
+            color: var(--text-muted);
+        }
+        .comparison-card .big-num {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        .comparison-card .label {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* ── Priority table ── */
+        .priority-1 { border-left: 3px solid var(--green); }
+        .priority-2 { border-left: 3px solid var(--amber); }
+        .priority-3 { border-left: 3px solid var(--red); }
+
+        /* ── Footer ── */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+
+        /* ── Print ── */
+        @media print {
+            body { background: #fff; color: #222; }
+            .hero { background: #f8f9fa; border-bottom: 2px solid #ddd; }
+            .hero h1 { -webkit-text-fill-color: #333; background: none; }
+            .toc, pre, .mermaid-wrapper, .comparison-card, .alert {
+                background: #f8f9fa;
+                border-color: #ddd;
+            }
+            thead th { background: #eee; }
+            tbody td { border-color: #ddd; }
+        }
+
+        @media (max-width: 700px) {
+            .hero { padding: 40px 20px 30px; }
+            .hero h1 { font-size: 1.6rem; }
+            .container { padding: 24px 16px 60px; }
+            .toc ol { columns: 1; }
+            .comparison { grid-template-columns: 1fr; }
+            .hero .meta { flex-direction: column; gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<header class="hero">
+    <h1>🛡️ Gateway Governance Latency Analysis</h1>
+    <p class="subtitle">How Evaluations, Compliance, and Guardrails impact every MCP/Gateway call — and how to avoid latency</p>
+    <div class="meta">
+        <span>📅 June 25, 2026</span>
+        <span>🏗️ AgentShield v1.0</span>
+        <span>📊 12–18 DB queries per request</span>
+    </div>
+</header>
+
+<div class="container">
+
+    <!-- ═══════════════ TOC ═══════════════ -->
+    <nav class="toc">
+        <h2>Table of Contents</h2>
+        <ol>
+            <li><a href="#current-arch">Current Architecture: What Runs on Every Call</a></li>
+            <li><a href="#per-module">Per-Module Analysis</a></li>
+            <li><a href="#cost-summary">Total Per-Request Cost Summary</a></li>
+            <li><a href="#mcp-impact">MCP-Specific Impact</a></li>
+            <li><a href="#access-granting">What Grants or Blocks Access</a></li>
+            <li><a href="#strategies">Latency Optimization Strategies</a></li>
+            <li><a href="#priority">Recommended Implementation Priority</a></li>
+            <li><a href="#takeaways">Key Takeaways</a></li>
+        </ol>
+    </nav>
+
+    <!-- ═══════════════ 1 ═══════════════ -->
+    <section id="current-arch">
+        <h2><span class="num">1.</span> Current Architecture: What Runs on Every Call</h2>
+
+        <p>Every request to <code>POST /api/v1/gateway/agents/:slug/invoke</code> passes through a <strong>serial middleware chain</strong> before reaching the agent:</p>
+
+        <div class="mermaid-wrapper">
+            <pre class="mermaid">
+sequenceDiagram
+    participant Client
+    participant TraceId as 1. TraceId
+    participant Auth as 2. Authenticate
+    participant Audit as 3. AuditLogger
+    participant Policy as 4. PolicyEnforcer
+    participant Budget as 5. BudgetChecker
+    participant Guard as 5.5 GuardrailEnforcer
+    participant Comp as 6. ComplianceSampler
+    participant Proxy as Gateway Proxy
+    participant Agent as Agent/MCP
+
+    Client->>TraceId: Request
+    TraceId->>Auth: ✓
+    Auth->>Audit: ✓
+    Audit->>Policy: ✓
+    Policy->>Budget: ✓
+    Budget->>Guard: ✓
+    Guard->>Comp: ✓
+    Comp->>Proxy: ✓
+    Proxy->>Agent: Forward
+    Agent-->>Proxy: Response
+    Proxy-->>Client: Response
+    Note over Comp: Compliance hooks into res.json()<br/>Runs AFTER agent responds
+            </pre>
+        </div>
+    </section>
+
+    <!-- ═══════════════ 2 ═══════════════ -->
+    <section id="per-module">
+        <h2><span class="num">2.</span> Per-Module Analysis</h2>
+
+        <!-- 2.1 Policy -->
+        <h3>2.1 Policy Enforcer (Stage 4) — Blocking, Synchronous</h3>
+        <p><strong>Role:</strong> Decides "Can this user call this agent?"</p>
+
+        <table>
+            <thead><tr><th>Step</th><th>Operation</th><th>DB Queries</th><th>Latency</th></tr></thead>
+            <tbody>
+                <tr><td>1</td><td><code>getModuleStatus('policies')</code></td><td>0–1 (cached 30s)</td><td>~0–2ms</td></tr>
+                <tr><td>2</td><td><code>RegistryService.getAgent(slug)</code></td><td>1 query</td><td>~2–5ms</td></tr>
+                <tr><td>3</td><td><code>policyService.evaluate(context)</code></td><td><strong>1 query</strong> — <code>SELECT * FROM policies WHERE is_active = true</code></td><td>~3–10ms</td></tr>
+                <tr><td>4</td><td>In-memory rule evaluation</td><td>0 queries</td><td>~0.1ms</td></tr>
+                <tr class="highlight-row"><td colspan="2"><strong>Total</strong></td><td><strong>2–3 queries</strong></td><td><strong>~5–17ms</strong></td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-important">
+            <div class="alert-title">⚠️ Important</div>
+            <strong>No caching on policies.</strong> Every request queries ALL active policies from the DB and iterates through them. For systems with many policies, this grows linearly.
+        </div>
+
+        <!-- 2.2 Budget -->
+        <h3>2.2 Budget Checker (Stage 5) — Blocking, Synchronous</h3>
+        <p><strong>Role:</strong> Decides "Has this user exceeded their budget?"</p>
+
+        <table>
+            <thead><tr><th>Step</th><th>Operation</th><th>DB Queries</th><th>Latency</th></tr></thead>
+            <tbody>
+                <tr><td>1</td><td><code>getModuleStatus('cost_management')</code></td><td>0–1 (cached 30s)</td><td>~0–2ms</td></tr>
+                <tr><td>2</td><td>For each scope (user, team, dept, agent, global)</td><td><strong>1 query PER SCOPE</strong></td><td>~2–5ms <strong>each</strong></td></tr>
+                <tr><td>3</td><td>Period expiry check + possible reset</td><td>0–2 queries</td><td>~0–10ms</td></tr>
+                <tr class="highlight-row"><td colspan="2"><strong>Total (worst case: 5 scopes)</strong></td><td><strong>5–7 queries</strong></td><td><strong>~10–35ms</strong></td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning">
+            <div class="alert-title">🔴 Warning</div>
+            <strong>This is the most expensive middleware.</strong> In the worst case (user + team + department + agent + global), it fires 5 separate DB queries, each a sequential <code>SELECT</code> with no batching.
+        </div>
+
+        <!-- 2.3 Guardrails -->
+        <h3>2.3 Guardrail Enforcer (Stage 5.5) — Blocking, Synchronous</h3>
+        <p><strong>Role:</strong> Decides "Does this content violate any rules?"</p>
+
+        <table>
+            <thead><tr><th>Step</th><th>Operation</th><th>DB Queries</th><th>Latency</th></tr></thead>
+            <tbody>
+                <tr><td>1</td><td><code>getModuleStatus('guardrails')</code></td><td>0–1 (cached 30s)</td><td>~0–2ms</td></tr>
+                <tr><td>2</td><td>Resolve agent slug → ID</td><td><strong>1 query</strong></td><td>~1–3ms</td></tr>
+                <tr><td>3</td><td><code>getAgentGuardrails(agentId)</code></td><td><strong>1 query</strong> — JOIN profiles</td><td>~3–8ms</td></tr>
+                <tr><td>4</td><td>Fetch enabled rules per profile</td><td><strong>N queries</strong></td><td>~2–5ms each</td></tr>
+                <tr><td>5</td><td>In-memory rule evaluation (regex, keyword)</td><td>0 queries</td><td>~0.5–3ms</td></tr>
+                <tr class="highlight-row"><td colspan="2"><strong>Total (2 profiles, 5 rules each)</strong></td><td><strong>3–4 queries</strong></td><td><strong>~8–20ms</strong></td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-note">
+            <div class="alert-title">ℹ️ Note</div>
+            The rule evaluation itself is fast (regex matching, keyword search). The cost is in the <strong>3–4 DB round-trips</strong> to fetch profiles and rules. LLM Judge is intentionally skipped in real-time mode.
+        </div>
+
+        <!-- 2.4 Compliance -->
+        <h3>2.4 Compliance Sampler (Stage 6) — Non-Blocking, Async ✅</h3>
+        <p><strong>Role:</strong> Probabilistically samples request/response pairs for audit.</p>
+
+        <table>
+            <thead><tr><th>Step</th><th>Operation</th><th>DB Queries</th><th>Latency Impact</th></tr></thead>
+            <tbody>
+                <tr><td>1</td><td><code>getModuleStatus('compliance')</code></td><td>0–1 (cached)</td><td>~0–2ms</td></tr>
+                <tr><td>2</td><td>Hooks <code>res.json()</code> and calls <code>next()</code></td><td>0</td><td><strong>0ms</strong> — does NOT block</td></tr>
+                <tr><td>3</td><td>After agent responds (async fire-and-forget)</td><td>1–2</td><td><strong>0ms</strong> — never delays response</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-tip">
+            <div class="alert-title">💡 Tip</div>
+            <strong>Compliance is the gold standard.</strong> It hooks into <code>res.json()</code> and runs after the response is sent. The client never waits for compliance logic. This pattern should be the model for future middleware.
+        </div>
+
+        <!-- 2.5 Evaluations -->
+        <h3>2.5 Evaluation Module — NOT in the Pipeline ✅</h3>
+        <p><strong>Role:</strong> Runs periodic quality assessments via LLM-as-a-Judge.</p>
+
+        <table>
+            <thead><tr><th>Trigger</th><th>Location</th><th>Latency Impact</th></tr></thead>
+            <tbody>
+                <tr><td>Manual (Dashboard → "Run Evaluation")</td><td>Admin API</td><td><strong>Zero</strong> — never runs on gateway calls</td></tr>
+                <tr><td><code>POST /evaluations/suites/:id/run</code></td><td>Admin route</td><td><strong>Zero</strong> — completely separate flow</td></tr>
+            </tbody>
+        </table>
+
+        <p>Evaluations call agents <strong>directly</strong> via <code>_invokeAndCapture()</code>, bypassing the gateway middleware entirely. They are a batch/scheduled process, not a per-request check.</p>
+    </section>
+
+    <!-- ═══════════════ 3 ═══════════════ -->
+    <section id="cost-summary">
+        <h2><span class="num">3.</span> Total Per-Request Cost Summary</h2>
+
+        <table>
+            <thead><tr><th>Middleware</th><th>DB Queries</th><th>Latency (p50)</th><th>Latency (p99)</th><th>Blocking?</th></tr></thead>
+            <tbody>
+                <tr><td>TraceId</td><td>0</td><td>&lt;0.5ms</td><td>&lt;1ms</td><td><span class="badge badge-green">Trivial</span></td></tr>
+                <tr><td>Authenticate</td><td>0–1</td><td>~1ms</td><td>~5ms</td><td><span class="badge badge-amber">Yes</span></td></tr>
+                <tr><td>AuditLogger</td><td>0</td><td>&lt;0.5ms</td><td>&lt;1ms</td><td><span class="badge badge-green">No (hooks)</span></td></tr>
+                <tr class="highlight-row"><td><strong>PolicyEnforcer</strong></td><td><strong>2–3</strong></td><td><strong>~8ms</strong></td><td><strong>~17ms</strong></td><td><span class="badge badge-red">Yes</span></td></tr>
+                <tr class="highlight-row"><td><strong>BudgetChecker</strong></td><td><strong>5–7</strong></td><td><strong>~15ms</strong></td><td><strong>~35ms</strong></td><td><span class="badge badge-red">Yes</span></td></tr>
+                <tr class="highlight-row"><td><strong>GuardrailEnforcer</strong></td><td><strong>3–4</strong></td><td><strong>~10ms</strong></td><td><strong>~20ms</strong></td><td><span class="badge badge-red">Yes</span></td></tr>
+                <tr><td>ComplianceSampler</td><td>0</td><td>&lt;0.5ms</td><td>&lt;1ms</td><td><span class="badge badge-green">No (async)</span></td></tr>
+                <tr><td>Module Toggle (×4)</td><td>0–1</td><td>~0–2ms</td><td>~4ms</td><td><span class="badge badge-blue">Cached</span></td></tr>
+                <tr style="border-top: 2px solid var(--accent);"><td><strong>TOTAL OVERHEAD</strong></td><td><strong>~12–18</strong></td><td><strong>~35ms</strong></td><td><strong>~80ms</strong></td><td></td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-caution">
+            <div class="alert-title">⛔ Caution</div>
+            On every gateway call, the system issues <strong>12–18 DB queries</strong> across policy, budget, and guardrail checks. At scale (>100 req/s), this creates significant connection pool pressure and adds ~35–80ms of latency before the request even reaches the agent.
+        </div>
+    </section>
+
+    <!-- ═══════════════ 4 ═══════════════ -->
+    <section id="mcp-impact">
+        <h2><span class="num">4.</span> MCP-Specific Impact</h2>
+
+        <p>MCP (Model Context Protocol) agents go through the <strong>exact same middleware chain</strong> as REST agents. The proxy flow:</p>
+
+        <pre>Client → Middleware Chain → proxy.js → invokeMcpAgent() → SSE connect → list_tools → call_tool → Response</pre>
+
+        <p>MCP calls are <strong>inherently slower</strong> than REST because they involve:</p>
+        <table>
+            <thead><tr><th>MCP Step</th><th>Latency</th></tr></thead>
+            <tbody>
+                <tr><td>SSE connection establishment</td><td>~50–200ms</td></tr>
+                <tr><td>Tool listing handshake</td><td>~100ms</td></tr>
+                <tr><td>Tool invocation</td><td>~500ms – 10s</td></tr>
+                <tr><td><strong>Middleware overhead</strong></td><td><strong>~35–80ms (5–15% of total)</strong></td></tr>
+            </tbody>
+        </table>
+
+        <p>The middleware overhead is <strong>proportionally smaller</strong> for MCP (~5–15% of total) but still creates unnecessary DB connection pool pressure at scale.</p>
+
+        <h3>Cost Recording vs. Cost Enforcement</h3>
+
+        <table>
+            <thead><tr><th>Component</th><th>Location</th><th>Toggleable?</th><th>Function</th></tr></thead>
+            <tbody>
+                <tr><td><code>budgetChecker</code></td><td>Middleware</td><td><span class="badge badge-green">Yes</span></td><td>"Can this user afford this call?"</td></tr>
+                <tr><td><code>costService.recordUsage()</code></td><td><code>proxy.js</code></td><td><span class="badge badge-red">No</span></td><td>"Log that this call happened"</td></tr>
+            </tbody>
+        </table>
+
+        <p>Even with Cost Management disabled, the <code>cost_records</code> table continues to accumulate usage data. Re-enabling the module immediately restores enforcement with full historical context.</p>
+    </section>
+
+    <!-- ═══════════════ 5 ═══════════════ -->
+    <section id="access-granting">
+        <h2><span class="num">5.</span> What Grants or Blocks Access</h2>
+
+        <table>
+            <thead><tr><th>Module</th><th>Grants/Blocks?</th><th>Explanation</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Policy Engine</strong></td><td><span class="badge badge-red">✅ Yes — 403</span></td><td>Primary access gate. Returns <code>allowed: true/false</code>.</td></tr>
+                <tr><td><strong>Budget Checker</strong></td><td><span class="badge badge-red">✅ Yes — 402</span></td><td>Secondary access gate. Blocks when budget exceeded.</td></tr>
+                <tr><td><strong>Guardrails</strong></td><td><span class="badge badge-red">✅ Yes — 422</span></td><td>Content gate. Blocks on violation (block mode only).</td></tr>
+                <tr><td><strong>Compliance</strong></td><td><span class="badge badge-green">❌ No — observes</span></td><td>Never blocks. Passively samples I/O for post-hoc audit.</td></tr>
+                <tr><td><strong>Evaluations</strong></td><td><span class="badge badge-green">❌ No — offline</span></td><td>Never runs in the request path. Dashboard-only batch process.</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- ═══════════════ 6 ═══════════════ -->
+    <section id="strategies">
+        <h2><span class="num">6.</span> Latency Optimization Strategies</h2>
+
+        <!-- Strategy 1 -->
+        <h3>Strategy 1: Cache Policy Decisions <span class="badge badge-green">High Impact, Low Risk</span></h3>
+        <p><strong>Problem:</strong> <code>policyService.evaluate()</code> queries ALL active policies on every call.</p>
+        <p><strong>Solution:</strong> Cache the policy list with a 15-second TTL, similar to the module toggle cache.</p>
+
+        <pre><span class="cmt">// PolicyService — add cache</span>
+<span class="kw">class</span> PolicyService {
+    <span class="fn">constructor</span>() {
+        <span class="kw">this</span>._policyCache = <span class="kw">null</span>;
+        <span class="kw">this</span>._policyCacheExpiry = <span class="num">0</span>;
+    }
+
+    <span class="kw">async</span> <span class="fn">_getActivePolicies</span>() {
+        <span class="kw">if</span> (<span class="kw">this</span>._policyCache && Date.now() < <span class="kw">this</span>._policyCacheExpiry) {
+            <span class="kw">return this</span>._policyCache;
+        }
+        <span class="kw">const</span> { rows } = <span class="kw">await</span> db.<span class="fn">query</span>(
+            <span class="str">`SELECT * FROM policies WHERE is_active = true ORDER BY priority ASC`</span>
+        );
+        <span class="kw">this</span>._policyCache = rows;
+        <span class="kw">this</span>._policyCacheExpiry = Date.now() + <span class="num">15000</span>; <span class="cmt">// 15s TTL</span>
+        <span class="kw">return</span> rows;
+    }
+}</pre>
+
+        <table>
+            <thead><tr><th>Metric</th><th>Before</th><th>After</th></tr></thead>
+            <tbody>
+                <tr><td>DB queries (policy)</td><td>1 per request</td><td>1 per 15 seconds</td></tr>
+                <tr><td>Latency</td><td>~3–10ms</td><td>~0.1ms (cache hit)</td></tr>
+                <tr><td>Staleness risk</td><td>None</td><td>Max 15s stale</td></tr>
+            </tbody>
+        </table>
+
+        <!-- Strategy 2 -->
+        <h3>Strategy 2: Batch Budget Queries <span class="badge badge-green">High Impact, Medium Risk</span></h3>
+        <p><strong>Problem:</strong> <code>checkBudget()</code> fires <strong>up to 5 sequential DB queries</strong>, one per scope.</p>
+        <p><strong>Solution:</strong> Replace N queries with a single <code>WHERE scope_id = ANY($1)</code> query.</p>
+
+        <pre><span class="kw">async</span> <span class="fn">checkBudget</span>(userId, teamId, departmentId, agentId) {
+    <span class="kw">const</span> scopeIds = [userId, teamId, departmentId, agentId, <span class="str">'global'</span>].filter(Boolean);
+
+    <span class="cmt">// ONE query instead of 5</span>
+    <span class="kw">const</span> { rows } = <span class="kw">await</span> db.<span class="fn">query</span>(
+        <span class="str">`SELECT * FROM budgets
+         WHERE scope_id = ANY($1) AND is_active = true AND period_start &lt;= NOW()`</span>,
+        [scopeIds]
+    );
+
+    <span class="cmt">// Group results by scope and evaluate</span>
+    <span class="kw">for</span> (<span class="kw">const</span> budget <span class="kw">of</span> rows) {
+        <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">_isPeriodExpired</span>(budget)) {
+            <span class="kw">await this</span>.<span class="fn">_archiveAndResetBudget</span>(budget);
+            <span class="kw">continue</span>;
+        }
+        <span class="cmt">// ... existing limit checks</span>
+    }
+}</pre>
+
+        <table>
+            <thead><tr><th>Metric</th><th>Before</th><th>After</th></tr></thead>
+            <tbody>
+                <tr><td>DB queries</td><td>5 sequential</td><td><strong>1 batched</strong></td></tr>
+                <tr><td>Latency</td><td>~10–35ms</td><td><strong>~3–8ms</strong></td></tr>
+                <tr><td>Correctness risk</td><td>None</td><td>None — same data, just batched</td></tr>
+            </tbody>
+        </table>
+
+        <!-- Strategy 3 -->
+        <h3>Strategy 3: Pre-compute Guardrail Rule Cache <span class="badge badge-amber">High Impact, Medium Risk</span></h3>
+        <p><strong>Problem:</strong> <code>_evaluate()</code> does 3–4 sequential queries: resolve slug → get profiles → get rules per profile.</p>
+        <p><strong>Solution:</strong> Cache the full agent → profiles → rules tree with a 30-second TTL.</p>
+
+        <table>
+            <thead><tr><th>Metric</th><th>Before</th><th>After</th></tr></thead>
+            <tbody>
+                <tr><td>DB queries per request</td><td>3–4</td><td>0 (cache hit) / 3–4 (miss)</td></tr>
+                <tr><td>Latency</td><td>~8–20ms</td><td><strong>~0.5–3ms</strong> (regex eval only)</td></tr>
+                <tr><td>Cache invalidation</td><td>N/A</td><td>On profile/rule CRUD</td></tr>
+            </tbody>
+        </table>
+
+        <!-- Strategy 4 -->
+        <h3>Strategy 4: Parallel Middleware Execution <span class="badge badge-amber">Moderate Impact, High Risk</span></h3>
+        <p><strong>Problem:</strong> Middleware runs serially: Policy → Budget → Guardrails.</p>
+        <p><strong>Solution:</strong> Run independent checks in parallel using <code>Promise.all()</code>.</p>
+
+        <table>
+            <thead><tr><th>Metric</th><th>Before (Serial)</th><th>After (Parallel)</th></tr></thead>
+            <tbody>
+                <tr><td>Latency</td><td>sum(P + B + G) = ~33–72ms</td><td><strong>max(P, B, G) = ~15–35ms</strong></td></tr>
+                <tr><td>Queries</td><td>Same total</td><td>Same total</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning">
+            <div class="alert-title">⚠️ Trade-off</div>
+            If Policy denies, Budget and Guardrail queries are wasted. In the serial model, Policy denial short-circuits and saves downstream work. Parallel execution trades wasted queries for reduced latency on the happy path.
+        </div>
+
+        <!-- Strategy 5 -->
+        <h3>Strategy 5: Redis-Backed Decision Cache <span class="badge badge-purple">Very High Impact, Higher Complexity</span></h3>
+        <p><strong>Problem:</strong> All caches are in-memory and process-local. In multi-instance deployments, cache invalidation doesn't propagate.</p>
+        <p><strong>Solution:</strong> Use Redis as a shared cache layer with Pub/Sub for cross-instance invalidation.</p>
+
+        <div class="mermaid-wrapper">
+            <pre class="mermaid">
+graph TD
+    I1["Instance 1"] --> Redis
+    I2["Instance 2"] --> Redis
+    I3["Instance 3"] --> Redis
+    Redis["Redis Cache Layer<br/>TTL-based + Pub/Sub"] --> PG["PostgreSQL"]
+
+    style Redis fill:#1a1d27,stroke:#a78bfa,color:#e1e4eb
+    style PG fill:#1a1d27,stroke:#6c8cff,color:#e1e4eb
+            </pre>
+        </div>
+
+        <table>
+            <thead><tr><th>Metric</th><th>In-Memory</th><th>Redis</th></tr></thead>
+            <tbody>
+                <tr><td>Cross-instance consistency</td><td>❌ No</td><td>✅ Yes</td></tr>
+                <tr><td>Cache invalidation</td><td>Process-local</td><td>Pub/Sub broadcast</td></tr>
+                <tr><td>Latency overhead</td><td>0ms</td><td>~0.5–1ms per read</td></tr>
+                <tr><td>Operational complexity</td><td>Low</td><td>Medium</td></tr>
+            </tbody>
+        </table>
+
+        <!-- Strategy 6 -->
+        <h3>Strategy 6: Compiled Rule Engine <span class="badge badge-purple">Future, Very High Impact</span></h3>
+        <p>For organizations with many policies/guardrails, pre-compile rules into decision trees at save time instead of interpreting them at request time. This is what OPA (Open Policy Agent) does — AgentShield already has OPA integration patterns in the design docs.</p>
+    </section>
+
+    <!-- ═══════════════ 7 ═══════════════ -->
+    <section id="priority">
+        <h2><span class="num">7.</span> Recommended Implementation Priority</h2>
+
+        <table>
+            <thead><tr><th>#</th><th>Strategy</th><th>Effort</th><th>Latency Reduction</th><th>Recommend?</th></tr></thead>
+            <tbody>
+                <tr class="priority-1"><td>1</td><td><strong>Cache Policy List</strong></td><td>🟢 Small (~1h)</td><td>~8ms → ~0.1ms</td><td><span class="badge badge-green">✅ Do first</span></td></tr>
+                <tr class="priority-1"><td>2</td><td><strong>Batch Budget Queries</strong></td><td>🟢 Small (~1h)</td><td>~15ms → ~5ms</td><td><span class="badge badge-green">✅ Do first</span></td></tr>
+                <tr class="priority-1"><td>3</td><td><strong>Cache Guardrail Rules</strong></td><td>🟡 Medium (~2h)</td><td>~12ms → ~1ms</td><td><span class="badge badge-green">✅ Do second</span></td></tr>
+                <tr class="priority-2"><td>4</td><td><strong>Parallel Middleware</strong></td><td>🟡 Medium (~3h)</td><td>~35ms → ~15ms</td><td><span class="badge badge-amber">⚠️ Trade-off</span></td></tr>
+                <tr class="priority-3"><td>5</td><td><strong>Redis Cache</strong></td><td>🔴 Large (~1–2d)</td><td>Multi-instance sync</td><td><span class="badge badge-blue">⏳ Scale</span></td></tr>
+                <tr class="priority-3"><td>6</td><td><strong>Compiled Rules</strong></td><td>🔴 Large (~3–5d)</td><td>~0.5ms → ~0.01ms</td><td><span class="badge badge-blue">⏳ 50+ policies</span></td></tr>
+            </tbody>
+        </table>
+
+        <h3>Quick-Win Impact (Strategies 1 + 2 + 3)</h3>
+
+        <div class="comparison">
+            <div class="comparison-card">
+                <h4>Before</h4>
+                <div class="big-num" style="color: var(--red);">12–18</div>
+                <div class="label">DB queries per request</div>
+                <div class="big-num" style="color: var(--red); margin-top: 12px;">~35ms</div>
+                <div class="label">p50 middleware latency</div>
+            </div>
+            <div class="comparison-card">
+                <h4>After Quick Wins</h4>
+                <div class="big-num" style="color: var(--green);">1–3</div>
+                <div class="label">DB queries per request (cache hits)</div>
+                <div class="big-num" style="color: var(--green); margin-top: 12px;">~5ms</div>
+                <div class="label">p50 middleware latency</div>
+            </div>
+        </div>
+
+        <div class="alert alert-tip">
+            <div class="alert-title">💡 Bottom Line</div>
+            Implementing just the top 3 strategies (<strong>~4 hours of work</strong>) reduces per-request DB queries by <strong>85%</strong> and cuts p50 middleware latency from <strong>35ms to 5ms</strong>.
+        </div>
+    </section>
+
+    <!-- ═══════════════ 8 ═══════════════ -->
+    <section id="takeaways">
+        <h2><span class="num">8.</span> Key Takeaways</h2>
+
+        <table>
+            <thead><tr><th>#</th><th>Finding</th></tr></thead>
+            <tbody>
+                <tr><td>1</td><td><strong>Evaluations never run on gateway calls.</strong> They're dashboard-only batch jobs. Zero latency concern.</td></tr>
+                <tr><td>2</td><td><strong>Compliance is already async-optimized.</strong> It hooks <code>res.json()</code> and runs after the response. No changes needed.</td></tr>
+                <tr><td>3</td><td><strong>Policy, Budget, and Guardrails are the latency culprits.</strong> They collectively issue 12–18 DB queries per request, all synchronous and blocking.</td></tr>
+                <tr><td>4</td><td><strong>None of these modules share query results.</strong> Policy fetches agent info, then Guardrails fetches it again independently.</td></tr>
+                <tr><td>5</td><td><strong>The module toggle cache (30s TTL) is the only caching that exists.</strong> Everything else hits the DB cold on every request.</td></tr>
+                <tr><td>6</td><td><strong>MCP calls are proportionally less affected</strong> (~5–15% overhead) because the MCP protocol itself adds 200–500ms. But DB pool pressure is identical.</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+</div>
+
+<footer class="footer">
+    <p>AgentShield — Gateway Governance Latency Analysis &nbsp;|&nbsp; Generated June 25, 2026 &nbsp;|&nbsp; Confidential</p>
+</footer>
+
+<script>
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'dark',
+        themeVariables: {
+            primaryColor: '#2d3040',
+            primaryTextColor: '#e1e4eb',
+            primaryBorderColor: '#4a4e6a',
+            lineColor: '#6c8cff',
+            secondaryColor: '#1a1d27',
+            tertiaryColor: '#22252f',
+            noteBkgColor: '#22252f',
+            noteTextColor: '#e1e4eb',
+            noteBorderColor: '#4a4e6a',
+        },
+        sequence: {
+            actorMargin: 20,
+            messageFontSize: 12,
+        }
+    });
+</script>
+
+</body>
+</html>

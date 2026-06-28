@@ -1,29 +1,114 @@
 const API_BASE = 'http://localhost:3000/api/v1';
 
 let authToken = localStorage.getItem('agentshield_token');
+let refreshTokenValue = localStorage.getItem('agentshield_refresh_token');
+let isRefreshing = false;
+let refreshPromise = null;
+let sessionExpiredCallback = null;
 
 export function setToken(token) {
     authToken = token;
     localStorage.setItem('agentshield_token', token);
 }
+export function setRefreshToken(token) {
+    refreshTokenValue = token;
+    localStorage.setItem('agentshield_refresh_token', token);
+}
 export function clearToken() {
     authToken = null;
+    refreshTokenValue = null;
     localStorage.removeItem('agentshield_token');
+    localStorage.removeItem('agentshield_refresh_token');
     localStorage.removeItem('agentshield_user');
 }
 export function getToken() { return authToken; }
 
+/**
+ * Register a callback that fires when the session is truly expired
+ * (both access token and refresh token are invalid).
+ * App.jsx uses this to redirect to the login screen.
+ */
+export function onSessionExpired(callback) {
+    sessionExpiredCallback = callback;
+}
+
+/**
+ * Attempt to refresh the access token using the stored refresh token.
+ * Deduplicates concurrent refresh attempts.
+ */
+async function tryRefreshToken() {
+    if (!refreshTokenValue) return false;
+
+    // Deduplicate — if a refresh is already in-flight, wait for it
+    if (isRefreshing) {
+        try { await refreshPromise; return true; }
+        catch { return false; }
+    }
+
+    isRefreshing = true;
+    refreshPromise = (async () => {
+        const res = await fetch(`${API_BASE}/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken: refreshTokenValue }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Refresh failed');
+        setToken(data.data.token);
+    })();
+
+    try {
+        await refreshPromise;
+        return true;
+    } catch {
+        return false;
+    } finally {
+        isRefreshing = false;
+        refreshPromise = null;
+    }
+}
+
+/**
+ * Central request function with automatic token refresh on 401.
+ * If the backend responds with TOKEN_EXPIRED, we try refreshing once.
+ * If that also fails, we fire the session-expired callback.
+ */
 async function request(method, path, body = null) {
-    const headers = { 'Content-Type': 'application/json' };
-    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+    const doFetch = () => {
+        const headers = { 'Content-Type': 'application/json' };
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+        return fetch(`${API_BASE}${path}`, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : null,
+        });
+    };
 
-    const res = await fetch(`${API_BASE}${path}`, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : null,
-    });
+    let res = await doFetch();
+    let data = await res.json();
 
-    const data = await res.json();
+    // If token expired, attempt a silent refresh and retry once
+    if (res.status === 401 && (data.code === 'TOKEN_EXPIRED' || data.error === 'Token expired')) {
+        const refreshed = await tryRefreshToken();
+        if (refreshed) {
+            // Retry the original request with the new token
+            res = await doFetch();
+            data = await res.json();
+        } else {
+            // Refresh failed — session is truly expired
+            clearToken();
+            if (sessionExpiredCallback) sessionExpiredCallback();
+            throw new Error('Session expired. Please log in again.');
+        }
+    }
+
+    // Catch other 401s (invalid token, auth required) — also trigger logout
+    if (res.status === 401) {
+        clearToken();
+        if (sessionExpiredCallback) sessionExpiredCallback();
+        throw new Error(data.error || 'Authentication required');
+    }
+
     if (!res.ok) throw new Error(data.error || 'Request failed');
     return data;
 }
@@ -76,8 +161,14 @@ const api = {
     listBudgets: () => request('GET', '/budgets'),
     createBudget: (data) => request('POST', '/budgets', data),
     updateBudget: (id, data) => request('PUT', `/budgets/${id}`, data),
+    deleteBudget: (id) => request('DELETE', `/budgets/${id}`),
     getCostReport: (params = '') => request('GET', `/cost/report?${params}`),
     getCostStats: () => request('GET', '/cost/stats'),
+    getDailyUsage: (days = 30) => request('GET', `/cost/daily?days=${days}`),
+    getModelPricing: () => request('GET', '/cost/model-pricing'),
+    getBudgetAlerts: () => request('GET', '/budgets/alerts'),
+    getBudgetHistory: (id) => request('GET', `/budgets/${id}/history`),
+    getAllBudgetHistory: (limit = 50) => request('GET', `/budgets/history/all?limit=${limit}`),
 
     // Audit
     listAuditLogs: (params = '') => request('GET', `/audit?${params}`),
@@ -104,12 +195,37 @@ const api = {
     toggleComplianceRule: (id, isEnabled) => request('PATCH', `/compliance/rules/${id}/toggle`, { isEnabled }),
     deleteComplianceRule: (id) => request('DELETE', `/compliance/rules/${id}`),
     uploadComplianceRules: async (formData) => {
-        const token = localStorage.getItem('agentshield_token');
-        const res = await fetch(`${API_BASE}/compliance/rules/upload`, {
-            method: 'POST',
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-            body: formData,
-        });
+        const doUpload = () => {
+            const headers = {};
+            if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+            return fetch(`${API_BASE}/compliance/rules/upload`, {
+                method: 'POST',
+                headers,
+                body: formData,
+            });
+        };
+
+        let res = await doUpload();
+
+        // Handle token expiry: try refresh and retry
+        if (res.status === 401) {
+            const data = await res.json().catch(() => ({}));
+            if (data.code === 'TOKEN_EXPIRED' || data.error === 'Token expired') {
+                const refreshed = await tryRefreshToken();
+                if (refreshed) {
+                    res = await doUpload();
+                } else {
+                    clearToken();
+                    if (sessionExpiredCallback) sessionExpiredCallback();
+                    throw new Error('Session expired. Please log in again.');
+                }
+            } else {
+                clearToken();
+                if (sessionExpiredCallback) sessionExpiredCallback();
+                throw new Error(data.error || 'Authentication required');
+            }
+        }
+
         if (!res.ok) {
             const err = await res.json().catch(() => ({ error: 'Upload failed' }));
             throw new Error(err.error || 'Upload failed');
@@ -129,10 +245,38 @@ const api = {
     runEvaluation: (suiteId, judgeModel = null) => request('POST', `/evaluations/suites/${suiteId}/run`, { judgeModel }),
     getEvalRuns: (suiteId) => request('GET', `/evaluations/suites/${suiteId}/runs`),
     getEvalRun: (runId) => request('GET', `/evaluations/runs/${runId}`),
-    getEvalReviews: () => request('GET', '/evaluations/reviews'),
+    getEvalReviews: (params = '') => request('GET', `/evaluations/reviews${params ? '?' + params : ''}`),
     submitEvalReview: (id, data) => request('PUT', `/evaluations/reviews/${id}`, data),
     getEvalStats: () => request('GET', '/evaluations/stats'),
     getEvalPersonas: () => request('GET', '/evaluations/personas'),
+
+    // API Keys
+    createApiKey: (data) => request('POST', '/api-keys', data),
+    listApiKeys: () => request('GET', '/api-keys'),
+    revokeApiKey: (id) => request('DELETE', `/api-keys/${id}`),
+
+    // Gateway Policy Check (self-service)
+    policyCheck: (data) => request('POST', '/gateway/policy/check', data),
+
+    // Guardrails
+    listGuardrailProfiles: () => request('GET', '/guardrails/profiles'),
+    getGuardrailProfile: (id) => request('GET', `/guardrails/profiles/${id}`),
+    createGuardrailProfile: (data) => request('POST', '/guardrails/profiles', data),
+    updateGuardrailProfile: (id, data) => request('PUT', `/guardrails/profiles/${id}`, data),
+    deleteGuardrailProfile: (id) => request('DELETE', `/guardrails/profiles/${id}`),
+    addGuardrailRule: (profileId, data) => request('POST', `/guardrails/profiles/${profileId}/rules`, data),
+    updateGuardrailRule: (id, data) => request('PUT', `/guardrails/rules/${id}`, data),
+    deleteGuardrailRule: (id) => request('DELETE', `/guardrails/rules/${id}`),
+    assignGuardrail: (agentId, profileId) => request('POST', '/guardrails/assign', { agentId, profileId }),
+    unassignGuardrail: (agentId, profileId) => request('DELETE', '/guardrails/assign', { agentId, profileId }),
+    getAgentGuardrails: (agentId) => request('GET', `/guardrails/agents/${agentId}`),
+    runGuardrailTests: (profileId, testCases, agentId = null) => request('POST', `/guardrails/profiles/${profileId}/test`, { testCases, agentId }),
+    getGuardrailTestRuns: (profileId = null, limit = 20) => request('GET', `/guardrails/test-runs?${profileId ? `profileId=${profileId}&` : ''}limit=${limit}`),
+    getGuardrailTestRun: (id) => request('GET', `/guardrails/test-runs/${id}`),
+    getGuardrailStats: () => request('GET', '/guardrails/stats'),
+
+    // Observability
+    getOtelHealth: () => request('GET', '/observability/health'),
 };
 
 export default api;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import api, { setToken } from '../api';
+import api, { setToken, setRefreshToken } from '../api';
 
 export default function Login({ onLogin }) {
     const [email, setEmail] = useState('admin@agentshield.local');
@@ -14,6 +14,7 @@ export default function Login({ onLogin }) {
         try {
             const res = await api.login(email, password);
             setToken(res.data.token);
+            if (res.data.refreshToken) setRefreshToken(res.data.refreshToken);
             localStorage.setItem('agentshield_user', JSON.stringify(res.data.user));
             onLogin(res.data.user);
         } catch (err) {
@@ -21,6 +22,7 @@ export default function Login({ onLogin }) {
             if (email === 'admin@agentshield.local' && password === 'admin123') {
                 const mockUser = { id: 'demo', email, name: 'System Admin', role: 'super_admin' };
                 setToken('demo-token');
+                setRefreshToken('demo-refresh-token');
                 localStorage.setItem('agentshield_user', JSON.stringify(mockUser));
                 onLogin(mockUser);
             } else {

@@ -30,6 +30,14 @@
 | [Evaluation Module](features/evaluation-module.md) | Three-layer agent evaluation, LLM-as-a-Judge, persona simulation, HITL review |
 | [Compliance Engine](features/compliance-engine.md) | SOX/HIPAA/GDPR/PCI-DSS compliance, PII detection, encrypted sampling |
 | [Cost Management](features/cost-management.md) | Token/cost budgets, usage tracking, period auto-reset |
+| [Cost Management — Use Cases](features/cost-management-use-cases.md) | Use case scenarios for budget enforcement, overage handling, and analytics |
+| [Cost Management — Test Cases](features/cost-management-test-cases.md) | Comprehensive test plan for cost recording, pricing, budgets, and UI |
+| [Guardrails](features/guardrails.md) | Input/output content enforcement, PII detection, prompt injection, test runner |
+| [Guardrails — Use Cases](features/guardrails-use-cases.md) | Use case scenarios for profiles, rules, assignments, and enforcement |
+| [Guardrails — Test Cases](features/guardrails-test-cases.md) | Comprehensive test plan for rule evaluation, middleware, and dashboard UI |
+| [Module Toggles](features/module-toggles.md) | Runtime module enable/disable, middleware bypass, sidebar filtering, cache |
+| [Module Toggles — Use Cases](features/module-toggles-use-cases.md) | Use case scenarios for toggling, sidebar hiding, and MCP impact |
+| [Module Toggles — Test Cases](features/module-toggles-test-cases.md) | Comprehensive test plan for cache, middleware bypass, API, and frontend |
 
 ## Guides
 
@@ -42,6 +50,17 @@
 | [Market Analysis](guides/market-analysis.md) | Competitive landscape, available products, and market positioning |
 | [Product Feasibility](guides/product-feasibility.md) | Feature feasibility, build estimates, risks, and verdict |
 | [Session Q&A History](guides/session-qa-history.md) | All questions asked and answers provided across previous sessions |
+
+## Analysis
+
+| Document | Description |
+|---|---|
+| [Gateway Latency Analysis](analysis/gateway-latency-analysis.html) | Per-request DB query costs, middleware latency breakdown, and optimization strategies (HTML) |
+| [Competitive Analysis](analysis/competitive-analysis.html) | Head-to-head comparison vs. Credo AI, OneTrust, Holistic AI, IBM watsonx, Microsoft Purview, Deeploy — feature matrix, sales battlecards (HTML) |
+| [Cloud Deployment Options](analysis/deployment-options.html) | AWS, Azure, GCP deployment architectures for Starter/Growth/Enterprise tiers — cost estimates, scaling patterns, extensibility roadmap (HTML) |
+| [GCP POC Deployment Guide](analysis/poc-deployment-guide.html) | End-to-end POC on Google Cloud — 6 test agents, infra setup, 25 test scenarios covering every governance capability (HTML) |
+| [AWS POC Deployment Guide](analysis/poc-deployment-aws.html) | End-to-end POC on AWS — ECS Fargate, RDS, S3+CloudFront, 6 test agents, 25 test scenarios (HTML) |
+| [Azure POC Deployment Guide](analysis/poc-deployment-azure.html) | End-to-end POC on Azure — Container Apps, Azure PostgreSQL, Static Web Apps, 6 test agents, 25 test scenarios (HTML) |
 
 ## Quick Start
 

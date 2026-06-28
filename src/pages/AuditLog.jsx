@@ -288,7 +288,18 @@ export default function AuditLog() {
                                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(139,92,246,0.06)'}
                                         onMouseLeave={e => e.currentTarget.style.background = ''}>
                                         <td style={{ color: 'var(--text-muted)', fontSize: 13, whiteSpace: 'nowrap' }}>{new Date(log.recorded_at).toLocaleTimeString()}</td>
-                                        <td><code style={{ background: 'var(--bg-input)', padding: '2px 8px', borderRadius: 4, fontSize: 12 }}>{(log.trace_id || '').substring(0, 8)}</code></td>
+                                        <td><code
+                                            title={`Click to view trace in Jaeger: ${log.trace_id}`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const jaegerUrl = localStorage.getItem('agentshield_jaeger_url') || 'http://localhost:16686';
+                                                const hexId = (log.trace_id || '').replace(/-/g, '').substring(0, 32);
+                                                window.open(`${jaegerUrl}/trace/${hexId}`, '_blank');
+                                            }}
+                                            style={{ background: 'var(--bg-input)', padding: '2px 8px', borderRadius: 4, fontSize: 12, cursor: 'pointer', color: 'var(--accent-primary)', textDecoration: 'none', transition: 'opacity 0.15s' }}
+                                            onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
+                                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                                        >{(log.trace_id || '').substring(0, 8)}…</code></td>
                                         <td style={{ fontSize: 12 }}>{log.event_type}</td>
                                         <td style={{ fontSize: 13, maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.action}</td>
                                         <td><span className={`badge ${outcomeStyle[log.outcome] || 'gray'}`}>{log.outcome}</span></td>
@@ -403,7 +414,17 @@ export default function AuditLog() {
                                 <div style={{ padding: '8px 20px 16px' }}>
                                     <DetailRow label="Timestamp" value={formatDate(log.recorded_at)} icon={HiClock} />
                                     <DetailRow label="Trace ID" value={
-                                        <code style={{ background: 'var(--bg-input)', padding: '3px 10px', borderRadius: 4, fontSize: 12, fontFamily: 'monospace' }}>{log.trace_id}</code>
+                                        <code
+                                            title="Click to view trace in Jaeger"
+                                            onClick={() => {
+                                                const jaegerUrl = localStorage.getItem('agentshield_jaeger_url') || 'http://localhost:16686';
+                                                const hexId = (log.trace_id || '').replace(/-/g, '').substring(0, 32);
+                                                window.open(`${jaegerUrl}/trace/${hexId}`, '_blank');
+                                            }}
+                                            style={{ background: 'var(--bg-input)', padding: '3px 10px', borderRadius: 4, fontSize: 12, fontFamily: 'monospace', cursor: 'pointer', color: 'var(--accent-primary)', transition: 'opacity 0.15s' }}
+                                            onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
+                                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                                        >{log.trace_id} ↗</code>
                                     } icon={HiFingerPrint} />
                                     <DetailRow label="Event Type" value={
                                         <span className="badge gray">{log.event_type}</span>

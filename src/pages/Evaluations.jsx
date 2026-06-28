@@ -65,6 +65,8 @@ export default function Evaluations() {
     const [reviews, setReviews] = useState([]);
     const [reviewNotes, setReviewNotes] = useState({});
     const [reviewScores, setReviewScores] = useState({});
+    const [reviewFilterAgent, setReviewFilterAgent] = useState('');
+    const [reviewFilterRun, setReviewFilterRun] = useState('');
 
     // Suite form
     const [suiteForm, setSuiteForm] = useState({
@@ -165,12 +167,15 @@ export default function Evaluations() {
     };
 
     // ============= REVIEWS TAB =============
-    const loadReviews = async () => {
+    const loadReviews = useCallback(async () => {
         try {
-            const res = await api.getEvalReviews();
+            const params = new URLSearchParams();
+            if (reviewFilterAgent) params.set('agent_id', reviewFilterAgent);
+            if (reviewFilterRun) params.set('run_id', reviewFilterRun);
+            const res = await api.getEvalReviews(params.toString());
             setReviews(res.data || []);
         } catch (err) { console.error(err); }
-    };
+    }, [reviewFilterAgent, reviewFilterRun]);
 
     const handleSubmitReview = async (reviewId, action) => {
         try {
@@ -183,9 +188,15 @@ export default function Evaluations() {
         } catch (err) { alert(err.message); }
     };
 
+    // Derive unique runs from loaded reviews for the run filter dropdown
+    const uniqueReviewRuns = [...new Map(reviews.map(r => [r.run_id, r])).values()].map(r => ({
+        run_id: r.run_id,
+        label: `${r.suite_name} — ${new Date(r.run_started_at).toLocaleDateString()} ${new Date(r.run_started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+    }));
+
     useEffect(() => {
         if (activeTab === 'reviews') loadReviews();
-    }, [activeTab]);
+    }, [activeTab, loadReviews]);
 
     useEffect(() => {
         if (historySuiteId) loadHistory(historySuiteId);
@@ -497,42 +508,121 @@ export default function Evaluations() {
                             Human-in-the-Loop review queue — evaluate low-confidence and flagged results
                         </p>
                     </div>
+
+                    {/* ── Filter Bar ── */}
+                    <div className="card" style={{ padding: '14px 18px', marginBottom: 16, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200 }}>
+                            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>Agent</label>
+                            <select className="form-select" value={reviewFilterAgent} onChange={e => { setReviewFilterAgent(e.target.value); }} style={{ flex: 1, fontSize: 13 }}>
+                                <option value="">All Agents</option>
+                                {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                            </select>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 250 }}>
+                            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>Run</label>
+                            <select className="form-select" value={reviewFilterRun} onChange={e => { setReviewFilterRun(e.target.value); }} style={{ flex: 1, fontSize: 13 }}>
+                                <option value="">All Runs</option>
+                                {uniqueReviewRuns.map(ur => <option key={ur.run_id} value={ur.run_id}>{ur.label}</option>)}
+                            </select>
+                        </div>
+                        {(reviewFilterAgent || reviewFilterRun) && (
+                            <button className="btn btn-sm" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: 12 }}
+                                onClick={() => { setReviewFilterAgent(''); setReviewFilterRun(''); }}>
+                                <HiXMark style={{ fontSize: 12 }} /> Clear Filters
+                            </button>
+                        )}
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                            {reviews.length} item{reviews.length !== 1 ? 's' : ''}
+                        </div>
+                    </div>
+
                     {reviews.length === 0 ? (
-                        <div className="card"><div className="empty-state"><div className="icon">✅</div><h4>No pending reviews</h4><p>All evaluation results have been reviewed or scored with high confidence</p></div></div>
+                        <div className="card"><div className="empty-state"><div className="icon">✅</div><h4>No pending reviews</h4><p>{reviewFilterAgent || reviewFilterRun ? 'No reviews match the current filters' : 'All evaluation results have been reviewed or scored with high confidence'}</p></div></div>
                     ) : (
                         <div style={{ display: 'grid', gap: 12 }}>
-                            {reviews.map(r => (
-                                <div key={r.id} className="card" style={{ padding: 20, border: '1px solid var(--warning)', borderLeft: '4px solid var(--warning)' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                                        <div>
-                                            <div style={{ fontWeight: 700, fontSize: 15 }}>{r.suite_name} → {r.scenario_id}</div>
-                                            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                                                Agent: {r.agent_name || '—'} • Judge: {r.judge_model || 'rule-based'} • Reason: <span className="badge yellow" style={{ fontSize: 10 }}>{r.review_reason}</span>
+                            {reviews.map(r => {
+                                const runDate = r.run_started_at ? new Date(r.run_started_at) : null;
+                                const runIdShort = r.run_id ? r.run_id.substring(0, 8) : '—';
+                                return (
+                                    <div key={r.id} className="card" style={{ padding: 0, border: '1px solid var(--warning)', borderLeft: '4px solid var(--warning)', overflow: 'hidden' }}>
+                                        {/* ── Run Identifier Banner ── */}
+                                        <div style={{ background: 'var(--bg-input)', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
+                                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Run</span>
+                                            <span className="badge blue" style={{ fontSize: 10, fontFamily: 'var(--font-mono, monospace)', cursor: 'pointer' }}
+                                                title={`Full ID: ${r.run_id}`}
+                                                onClick={() => { setReviewFilterRun(r.run_id); }}>
+                                                #{runIdShort}
+                                            </span>
+                                            {r.suite_name && (
+                                                <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{r.suite_name}</span>
+                                            )}
+                                            {r.eval_mode && (
+                                                <span className={`badge ${MODE_COLORS[r.eval_mode] || 'gray'}`} style={{ fontSize: 10 }}>{MODE_LABELS[r.eval_mode] || r.eval_mode}</span>
+                                            )}
+                                            {r.agent_name && (
+                                                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                                    <HiCpuChip style={{ verticalAlign: 'middle', fontSize: 13, marginRight: 2 }} />
+                                                    <span style={{ cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2, textDecorationColor: 'var(--border-color)' }}
+                                                        onClick={() => { setReviewFilterAgent(r.agent_id); }}>
+                                                        {r.agent_name}
+                                                    </span>
+                                                </span>
+                                            )}
+                                            {runDate && (
+                                                <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <HiClock style={{ fontSize: 12 }} />
+                                                    {runDate.toLocaleDateString()} {runDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            )}
+                                            {r.run_overall_score != null && (
+                                                <span style={{ fontSize: 11, fontWeight: 700, color: Number(r.run_overall_score) >= 70 ? 'var(--success)' : Number(r.run_overall_score) >= 40 ? 'var(--warning)' : 'var(--danger)' }}>
+                                                    Run Score: {Number(r.run_overall_score)}/100
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* ── Review Content ── */}
+                                        <div style={{ padding: '16px 18px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                                <div>
+                                                    <div style={{ fontWeight: 700, fontSize: 15 }}>
+                                                        <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 12, marginRight: 6 }}>Scenario</span>
+                                                        {r.scenario_id}
+                                                    </div>
+                                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                        <span>Judge: <strong>{r.judge_model || 'rule-based'}</strong></span>
+                                                        <span style={{ color: 'var(--border-color)' }}>•</span>
+                                                        <span>Reason: <span className="badge yellow" style={{ fontSize: 10 }}>{r.review_reason?.replace(/_/g, ' ')}</span></span>
+                                                    </div>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--warning)', lineHeight: 1 }}>
+                                                        {r.original_score != null ? Number(r.original_score).toFixed(1) : '?'}
+                                                    </div>
+                                                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>/ 10</div>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginTop: 12 }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Override Score (optional)</label>
+                                                    <input type="number" className="form-input" min="0" max="10" step="0.5" placeholder="0-10"
+                                                        value={reviewScores[r.id] || ''} onChange={e => setReviewScores({ ...reviewScores, [r.id]: e.target.value })} style={{ width: 100 }} />
+                                                </div>
+                                                <div style={{ flex: 2 }}>
+                                                    <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Notes</label>
+                                                    <input className="form-input" placeholder="Review notes..."
+                                                        value={reviewNotes[r.id] || ''} onChange={e => setReviewNotes({ ...reviewNotes, [r.id]: e.target.value })} />
+                                                </div>
+                                                <div style={{ display: 'flex', gap: 6 }}>
+                                                    <button className="btn btn-sm" style={{ background: 'var(--success-bg)', color: 'var(--success)', border: 'none' }} onClick={() => handleSubmitReview(r.id, 'approved')}><HiHandThumbUp /> Approve</button>
+                                                    <button className="btn btn-sm" style={{ background: 'var(--info-bg)', color: 'var(--info)', border: 'none' }} onClick={() => handleSubmitReview(r.id, 'overridden')}><HiPencil /> Override</button>
+                                                    <button className="btn btn-sm" style={{ background: 'var(--warning-bg)', color: 'var(--warning)', border: 'none' }} onClick={() => handleSubmitReview(r.id, 'flagged_known_issue')}><HiFlag /> Flag</button>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--warning)' }}>
-                                            {r.original_score != null ? Number(r.original_score).toFixed(1) : '?'}/10
-                                        </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginTop: 12 }}>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Override Score (optional)</label>
-                                            <input type="number" className="form-input" min="0" max="10" step="0.5" placeholder="0-10"
-                                                value={reviewScores[r.id] || ''} onChange={e => setReviewScores({ ...reviewScores, [r.id]: e.target.value })} style={{ width: 100 }} />
-                                        </div>
-                                        <div style={{ flex: 2 }}>
-                                            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Notes</label>
-                                            <input className="form-input" placeholder="Review notes..."
-                                                value={reviewNotes[r.id] || ''} onChange={e => setReviewNotes({ ...reviewNotes, [r.id]: e.target.value })} />
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 6 }}>
-                                            <button className="btn btn-sm" style={{ background: 'var(--success-bg)', color: 'var(--success)', border: 'none' }} onClick={() => handleSubmitReview(r.id, 'approved')}><HiHandThumbUp /> Approve</button>
-                                            <button className="btn btn-sm" style={{ background: 'var(--info-bg)', color: 'var(--info)', border: 'none' }} onClick={() => handleSubmitReview(r.id, 'overridden')}><HiPencil /> Override</button>
-                                            <button className="btn btn-sm" style={{ background: 'var(--warning-bg)', color: 'var(--warning)', border: 'none' }} onClick={() => handleSubmitReview(r.id, 'flagged_known_issue')}><HiFlag /> Flag</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

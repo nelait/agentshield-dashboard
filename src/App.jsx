@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { HiSquares2X2, HiServer, HiShieldCheck, HiArrowsRightLeft, HiDocumentText, HiCurrencyDollar, HiClipboardDocumentList, HiBeaker, HiArrowRightOnRectangle, HiCog6Tooth, HiChartBar } from 'react-icons/hi2';
+import { useState, useEffect, useCallback } from 'react';
+import { HiSquares2X2, HiServer, HiShieldCheck, HiShieldExclamation, HiArrowsRightLeft, HiDocumentText, HiCurrencyDollar, HiClipboardDocumentList, HiBeaker, HiArrowRightOnRectangle, HiCog6Tooth, HiChartBar, HiSignal, HiCodeBracket } from 'react-icons/hi2';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Agents from './pages/Agents';
@@ -11,7 +11,10 @@ import AuditLog from './pages/AuditLog';
 import Playground from './pages/Playground';
 import Evaluations from './pages/Evaluations';
 import Settings from './pages/Settings';
-import { clearToken } from './api';
+import Observability from './pages/Observability';
+import Guardrails from './pages/Guardrails';
+import Integrations from './pages/Integrations';
+import api, { clearToken, onSessionExpired } from './api';
 import './index.css';
 
 const NAV_ITEMS = [
@@ -25,6 +28,7 @@ const NAV_ITEMS = [
       { key: 'agents', label: 'Agent Registry', icon: HiServer },
       { key: 'workflows', label: 'Workflows', icon: HiArrowsRightLeft },
       { key: 'policies', label: 'Policies', icon: HiShieldCheck },
+      { key: 'guardrails', label: 'Guardrails', icon: HiShieldExclamation },
     ]
   },
   {
@@ -42,14 +46,31 @@ const NAV_ITEMS = [
   {
     section: 'Monitoring', items: [
       { key: 'audit', label: 'Audit Log', icon: HiClipboardDocumentList },
+      { key: 'observability', label: 'Observability', icon: HiSignal },
     ]
   },
   {
     section: 'System', items: [
+      { key: 'integrations', label: 'Integrations', icon: HiCodeBracket },
       { key: 'settings', label: 'Settings', icon: HiCog6Tooth },
     ]
   },
 ];
+
+// Maps module keys → sidebar nav keys that should be hidden when module is disabled
+const MODULE_NAV_MAP = {
+  policies: ['policies'],
+  guardrails: ['guardrails'],
+  compliance: ['compliance'],
+  cost_management: ['cost'],
+  evaluations: ['evaluations'],
+};
+
+// Build reverse map: nav key → module key
+const NAV_TO_MODULE = {};
+Object.entries(MODULE_NAV_MAP).forEach(([mod, keys]) => {
+  keys.forEach(k => { NAV_TO_MODULE[k] = mod; });
+});
 
 const PAGES = {
   dashboard: { title: 'Dashboard', component: Dashboard },
@@ -62,6 +83,9 @@ const PAGES = {
   playground: { title: 'Policy Playground', component: Playground },
   evaluations: { title: 'Agent Evaluations', component: Evaluations },
   settings: { title: 'Settings', component: Settings },
+  observability: { title: 'Observability', component: Observability },
+  guardrails: { title: 'Guardrails', component: Guardrails },
+  integrations: { title: 'Integrations', component: Integrations },
 };
 
 export default function App() {
@@ -70,6 +94,46 @@ export default function App() {
     return stored ? JSON.parse(stored) : null;
   });
   const [activePage, setActivePage] = useState('dashboard');
+  const [moduleStates, setModuleStates] = useState({});
+
+  // Fetch module statuses (on login and every 60s)
+  const fetchModuleStates = useCallback(async () => {
+    try {
+      const res = await api.getSettings('modules');
+      const states = {};
+      (res.data || []).forEach(s => {
+        const val = typeof s.value === 'string' ? JSON.parse(s.value) : s.value;
+        states[s.key] = val;
+      });
+      setModuleStates(states);
+    } catch { /* fail-open: default all enabled */ }
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchModuleStates();
+      const interval = setInterval(fetchModuleStates, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [user, fetchModuleStates]);
+
+  // Redirect to dashboard if current page's module is disabled
+  useEffect(() => {
+    const modKey = NAV_TO_MODULE[activePage];
+    if (modKey && moduleStates[modKey]?.enabled === false) {
+      setActivePage('dashboard');
+    }
+  }, [activePage, moduleStates]);
+
+  // Auto-logout when session expires (access + refresh tokens both invalid)
+  const handleSessionExpired = useCallback(() => {
+    clearToken();
+    setUser(null);
+  }, []);
+
+  useEffect(() => {
+    onSessionExpired(handleSessionExpired);
+  }, [handleSessionExpired]);
 
   if (!user) {
     return <Login onLogin={setUser} />;
@@ -96,19 +160,28 @@ export default function App() {
         </div>
 
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map(section => (
-            <div className="nav-section" key={section.section}>
-              <div className="nav-section-title">{section.section}</div>
-              {section.items.map(item => (
-                <button key={item.key}
-                  className={`nav-item ${activePage === item.key ? 'active' : ''}`}
-                  onClick={() => setActivePage(item.key)}>
-                  <item.icon className="icon" />
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          ))}
+          {NAV_ITEMS.map(section => {
+            // Filter items by module status
+            const visibleItems = section.items.filter(item => {
+              const modKey = NAV_TO_MODULE[item.key];
+              if (!modKey) return true; // Not tied to a module → always visible
+              return moduleStates[modKey]?.enabled !== false; // Default: enabled
+            });
+            if (visibleItems.length === 0) return null;
+            return (
+              <div className="nav-section" key={section.section}>
+                <div className="nav-section-title">{section.section}</div>
+                {visibleItems.map(item => (
+                  <button key={item.key}
+                    className={`nav-item ${activePage === item.key ? 'active' : ''}`}
+                    onClick={() => setActivePage(item.key)}>
+                    <item.icon className="icon" />
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </nav>
 
         <div style={{ padding: 12, borderTop: '1px solid var(--border-color)' }}>

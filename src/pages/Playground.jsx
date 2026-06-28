@@ -399,6 +399,8 @@ export default function Playground() {
                     <div className="card"><div className="empty-state"><div className="icon">🤖</div><h4>No agents available</h4><p>Go to Agent Registry and seed sample agents first</p></div></div>
                 )}
             </>)}
+
+
         </div>
     );
 }

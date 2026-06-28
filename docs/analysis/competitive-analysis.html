@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentShield — Competitive Analysis 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b0d11;
+            --surface: #14171e;
+            --surface-2: #1c2029;
+            --surface-3: #242833;
+            --border: #2a2e3d;
+            --border-light: #363b4e;
+            --text: #e4e7ed;
+            --text-muted: #8990a5;
+            --text-dim: #5c6378;
+            --accent: #6c8cff;
+            --accent-light: #8ba6ff;
+            --accent-glow: rgba(108,140,255,0.12);
+            --green: #34d399;
+            --green-bg: rgba(52,211,153,0.08);
+            --green-border: rgba(52,211,153,0.25);
+            --amber: #fbbf24;
+            --amber-bg: rgba(251,191,36,0.08);
+            --amber-border: rgba(251,191,36,0.25);
+            --red: #f87171;
+            --red-bg: rgba(248,113,113,0.08);
+            --red-border: rgba(248,113,113,0.25);
+            --blue: #60a5fa;
+            --blue-bg: rgba(96,165,250,0.08);
+            --purple: #a78bfa;
+            --purple-bg: rgba(167,139,250,0.08);
+            --cyan: #22d3ee;
+            --shield: #6c8cff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.72;
+        }
+
+        /* ───── HERO ───── */
+        .hero {
+            position: relative;
+            padding: 80px 40px 60px;
+            text-align: center;
+            overflow: hidden;
+            border-bottom: 1px solid var(--border);
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 30% 20%, rgba(108,140,255,0.08), transparent),
+                radial-gradient(ellipse 40% 40% at 70% 70%, rgba(167,139,250,0.06), transparent);
+            pointer-events: none;
+        }
+        .hero .badge-doc {
+            display: inline-block;
+            padding: 5px 16px;
+            background: var(--accent-glow);
+            border: 1px solid rgba(108,140,255,0.3);
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--accent-light);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 18px;
+            position: relative;
+        }
+        .hero h1 {
+            font-size: 2.6rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 30%, var(--accent-light) 70%, var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            line-height: 1.2;
+        }
+        .hero .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-top: 14px;
+            position: relative;
+            max-width: 680px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .hero .meta-row {
+            margin-top: 24px;
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            position: relative;
+        }
+        .hero .meta-row span {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            background: var(--surface-2);
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        /* ───── LAYOUT ───── */
+        .container {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 48px 32px 100px;
+        }
+
+        /* ───── TOC ───── */
+        .toc {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 28px 34px;
+            margin-bottom: 56px;
+        }
+        .toc-title {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-dim);
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .toc ol {
+            padding-left: 20px;
+            columns: 2;
+            column-gap: 32px;
+        }
+        .toc li { margin-bottom: 7px; break-inside: avoid; }
+        .toc a { color: var(--accent); text-decoration: none; font-size: 0.88rem; }
+        .toc a:hover { text-decoration: underline; }
+
+        /* ───── SECTIONS ───── */
+        section { margin-bottom: 64px; }
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        h2 .num { color: var(--accent); margin-right: 8px; }
+        h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin: 32px 0 14px;
+            color: #dee1e9;
+        }
+        h4 {
+            font-size: 0.92rem;
+            font-weight: 700;
+            margin: 20px 0 8px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        p { margin-bottom: 14px; }
+
+        /* ───── TABLES ───── */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 16px 0 28px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.84rem;
+        }
+        thead th {
+            background: var(--surface-2);
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.7px;
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 2px solid var(--border);
+            position: sticky;
+            top: 0;
+            white-space: nowrap;
+        }
+        thead th:first-child { border-radius: 12px 0 0 0; }
+        thead th:last-child { border-radius: 0 12px 0 0; }
+        tbody td {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        tbody tr:hover { background: rgba(108,140,255,0.03); }
+        td code {
+            background: var(--surface-3);
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            color: var(--purple);
+        }
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            background: var(--surface);
+            z-index: 1;
+            font-weight: 600;
+        }
+        th.sticky-col { background: var(--surface-2); }
+        .col-shield { background: rgba(108,140,255,0.05) !important; }
+        th.col-shield { background: rgba(108,140,255,0.12) !important; color: var(--accent-light) !important; }
+
+        /* ───── BADGES ───── */
+        .b {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .b-full { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+        .b-partial { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+        .b-none { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+        .b-strong { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+        .b-info { background: var(--blue-bg); color: var(--blue); border: 1px solid rgba(96,165,250,0.25); }
+        .b-purple { background: var(--purple-bg); color: var(--purple); border: 1px solid rgba(167,139,250,0.25); }
+
+        /* ───── COMPETITOR CARDS ───── */
+        .comp-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 0;
+            margin-bottom: 32px;
+            overflow: hidden;
+        }
+        .comp-header {
+            padding: 20px 28px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .comp-header .logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+        .comp-header h3 { margin: 0; font-size: 1.2rem; }
+        .comp-header .tagline {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .comp-body {
+            padding: 24px 28px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        .comp-section h4 {
+            margin: 0 0 10px;
+            font-size: 0.78rem;
+        }
+        .comp-section ul {
+            list-style: none;
+            padding: 0;
+        }
+        .comp-section ul li {
+            font-size: 0.84rem;
+            padding: 4px 0;
+            color: var(--text);
+        }
+        .comp-section ul li::before {
+            content: '•';
+            color: var(--text-dim);
+            margin-right: 8px;
+        }
+        .strengths li::before { content: '✅'; margin-right: 6px; }
+        .weaknesses li::before { content: '⚠️'; margin-right: 6px; }
+        .comp-verdict {
+            grid-column: 1 / -1;
+            background: var(--surface-2);
+            border-radius: 10px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .comp-verdict .icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+        .comp-verdict strong { color: var(--accent-light); }
+
+        /* ───── ALERT BOXES ───── */
+        .alert {
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin: 16px 0 24px;
+            font-size: 0.88rem;
+            border-left: 4px solid;
+        }
+        .alert-tip { background: var(--green-bg); border-color: var(--green); }
+        .alert-tip .at { color: var(--green); }
+        .alert-warn { background: var(--amber-bg); border-color: var(--amber); }
+        .alert-warn .at { color: var(--amber); }
+        .alert-info { background: var(--blue-bg); border-color: var(--blue); }
+        .alert-info .at { color: var(--blue); }
+        .at {
+            font-weight: 700;
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            margin-bottom: 6px;
+        }
+
+        /* ───── SALES BATTLECARD ───── */
+        .battlecard {
+            background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+            border: 1px solid var(--accent);
+            border-radius: 14px;
+            padding: 28px;
+            margin: 20px 0 28px;
+        }
+        .battlecard h4 {
+            color: var(--accent-light);
+            margin-bottom: 14px;
+        }
+        .battlecard .objection {
+            background: var(--surface-3);
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-bottom: 12px;
+        }
+        .battlecard .objection .q {
+            font-weight: 700;
+            color: var(--amber);
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+        }
+        .battlecard .objection .a {
+            font-size: 0.84rem;
+            color: var(--text);
+        }
+
+        /* ───── POSITIONING GRID ───── */
+        .pos-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0 28px;
+        }
+        .pos-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .pos-card .big {
+            font-size: 2.2rem;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+        .pos-card .label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* ───── FOOTER ───── */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.78rem;
+        }
+
+        /* ───── PRINT ───── */
+        @media print {
+            body { background: #fff; color: #222; font-size: 10pt; }
+            .hero { background: #f5f6fa; }
+            .hero h1 { -webkit-text-fill-color: #222; background: none; }
+            .comp-card, .toc, .battlecard, .alert, table { break-inside: avoid; }
+            table { font-size: 8pt; }
+            .table-wrap { border: 1px solid #ccc; }
+            thead th { background: #eee; color: #555; }
+            tbody td { border-color: #ddd; }
+            .comp-card { border-color: #ccc; }
+            .comp-header, .comp-body { background: #f9f9f9; }
+        }
+
+        @media (max-width: 768px) {
+            .hero { padding: 50px 20px 40px; }
+            .hero h1 { font-size: 1.6rem; }
+            .container { padding: 24px 16px 60px; }
+            .toc ol { columns: 1; }
+            .comp-body { grid-template-columns: 1fr; }
+            .pos-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+    <div class="badge-doc">Confidential — Sales Enablement</div>
+    <h1>🛡️ AgentShield Competitive Analysis</h1>
+    <p class="subtitle">
+        Head-to-head comparison against 6 enterprise AI governance platforms — Credo AI, OneTrust, Holistic AI, IBM watsonx.governance, Microsoft Purview, and Deeploy
+    </p>
+    <div class="meta-row">
+        <span>📅 June 2026</span>
+        <span>🏷️ v1.0 — Sales Enablement</span>
+        <span>🎯 6 Competitors Analyzed</span>
+        <span>📊 42 Capabilities Compared</span>
+    </div>
+</header>
+
+<div class="container">
+
+<!-- ══════════ TOC ══════════ -->
+<nav class="toc">
+    <div class="toc-title">Table of Contents</div>
+    <ol>
+        <li><a href="#exec">Executive Summary</a></li>
+        <li><a href="#landscape">Market Landscape</a></li>
+        <li><a href="#matrix">Feature Comparison Matrix</a></li>
+        <li><a href="#credo">vs. Credo AI</a></li>
+        <li><a href="#onetrust">vs. OneTrust AI Governance</a></li>
+        <li><a href="#holistic">vs. Holistic AI</a></li>
+        <li><a href="#ibm">vs. IBM watsonx.governance</a></li>
+        <li><a href="#purview">vs. Microsoft Purview</a></li>
+        <li><a href="#deeploy">vs. Deeploy</a></li>
+        <li><a href="#positioning">Strategic Positioning</a></li>
+        <li><a href="#battlecard">Sales Battlecard</a></li>
+        <li><a href="#when">When AgentShield Wins / Loses</a></li>
+    </ol>
+</nav>
+
+<!-- ══════════ 1. EXEC SUMMARY ══════════ -->
+<section id="exec">
+    <h2><span class="num">1.</span> Executive Summary</h2>
+
+    <p>AgentShield occupies a unique position in the AI governance market: it is an <strong>"Agent Governance Firewall"</strong> — a transparent runtime proxy that enforces policy, budget, compliance, and guardrails on every AI agent call <em>without modifying the agents themselves</em>.</p>
+
+    <p>Every competitor approaches AI governance differently. Here's how they cluster:</p>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Competitors</th>
+                    <th>AgentShield Differentiator</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>GRC/Policy Platforms</strong><br><span style="color:var(--text-dim)">Governance, Risk, Compliance</span></td>
+                    <td>Credo AI, OneTrust, Holistic AI</td>
+                    <td>These are <em>documentation & assessment</em> tools. AgentShield <em>enforces</em> policy at the wire level — every request is blocked or allowed in real time.</td>
+                </tr>
+                <tr>
+                    <td><strong>Model Lifecycle Platforms</strong><br><span style="color:var(--text-dim)">MLOps + Governance</span></td>
+                    <td>IBM watsonx.governance, Deeploy</td>
+                    <td>They govern <em>models</em> (training → deployment). AgentShield governs <em>agents</em> — autonomous multi-model, multi-tool entities calling external services.</td>
+                </tr>
+                <tr>
+                    <td><strong>Data Security Platforms</strong><br><span style="color:var(--text-dim)">DLP + Shadow AI</span></td>
+                    <td>Microsoft Purview</td>
+                    <td>Purview protects <em>data</em> from AI. AgentShield protects <em>organizations</em> from agent behavior — access control, cost limits, content guardrails.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="alert alert-tip">
+        <div class="at">💡 Key Insight for Sales</div>
+        <strong>None of these competitors provide runtime agent-level governance.</strong> They govern models, data, or documentation — AgentShield governs the <em>live call path</em> of autonomous agents. This is the fundamental differentiator in every conversation.
+    </div>
+</section>
+
+<!-- ══════════ 2. LANDSCAPE ══════════ -->
+<section id="landscape">
+    <h2><span class="num">2.</span> Market Landscape</h2>
+
+    <div class="pos-grid">
+        <div class="pos-card">
+            <div class="big" style="color:var(--accent)">$541M+</div>
+            <div class="label">Invested in AI safety/governance (Oct 2024 – Dec 2025)</div>
+        </div>
+        <div class="pos-card">
+            <div class="big" style="color:var(--green)">40%</div>
+            <div class="label">of enterprise apps will embed AI agents by 2026 (Gartner)</div>
+        </div>
+        <div class="pos-card">
+            <div class="big" style="color:var(--amber)">3–5</div>
+            <div class="label">Products needed today to cover full agent governance</div>
+        </div>
+        <div class="pos-card">
+            <div class="big" style="color:var(--purple)">1</div>
+            <div class="label">Product provides unified agent firewall — AgentShield</div>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Competitor</th>
+                    <th>Founded</th>
+                    <th>HQ</th>
+                    <th>Pricing</th>
+                    <th>Deployment</th>
+                    <th>Primary Focus</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Credo AI</strong></td>
+                    <td>2020</td>
+                    <td>USA</td>
+                    <td>Enterprise custom</td>
+                    <td>SaaS, Self-hosted (K8s)</td>
+                    <td>AI GRC, Policy Packs, Risk Register</td>
+                </tr>
+                <tr>
+                    <td><strong>OneTrust</strong></td>
+                    <td>2016</td>
+                    <td>USA</td>
+                    <td>$50K–$300K+ / yr</td>
+                    <td>SaaS</td>
+                    <td>Privacy + GRC + AI Governance unified</td>
+                </tr>
+                <tr>
+                    <td><strong>Holistic AI</strong></td>
+                    <td>2018</td>
+                    <td>UK</td>
+                    <td>Enterprise custom</td>
+                    <td>SaaS</td>
+                    <td>Automated auditing, bias testing, risk</td>
+                </tr>
+                <tr>
+                    <td><strong>IBM watsonx.gov</strong></td>
+                    <td>2023</td>
+                    <td>USA</td>
+                    <td>Enterprise license</td>
+                    <td>SaaS, Private Cloud (OpenShift)</td>
+                    <td>Model lifecycle, lineage, explainability</td>
+                </tr>
+                <tr>
+                    <td><strong>Microsoft Purview</strong></td>
+                    <td>2022</td>
+                    <td>USA</td>
+                    <td>M365 bundle / add-on</td>
+                    <td>SaaS (Azure)</td>
+                    <td>Data sensitivity, shadow AI, DLP</td>
+                </tr>
+                <tr>
+                    <td><strong>Deeploy</strong></td>
+                    <td>2020</td>
+                    <td>Netherlands</td>
+                    <td>Enterprise custom</td>
+                    <td>SaaS, Private Cloud</td>
+                    <td>Runtime MLOps + compliance controls</td>
+                </tr>
+                <tr style="border-top: 2px solid var(--accent);">
+                    <td><strong style="color:var(--accent)">AgentShield</strong></td>
+                    <td>2025</td>
+                    <td>USA</td>
+                    <td>Self-hosted (free core)</td>
+                    <td>Self-hosted (Docker/K8s)</td>
+                    <td><strong>Agent governance firewall — runtime enforcement</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ══════════ 3. FEATURE MATRIX ══════════ -->
+<section id="matrix">
+    <h2><span class="num">3.</span> Feature Comparison Matrix</h2>
+
+    <p>This matrix compares <strong>42 capabilities</strong> across all 7 platforms. <span class="b b-full">✓ Full</span> = production-ready feature. <span class="b b-partial">◐ Partial</span> = exists but limited. <span class="b b-none">✗ None</span> = not offered.</p>
+
+    <!-- 3.1 Agent Gateway & Runtime -->
+    <h3>3.1 Agent Gateway &amp; Runtime Enforcement</h3>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th class="sticky-col">Capability</th>
+                    <th class="col-shield">AgentShield</th>
+                    <th>Credo AI</th>
+                    <th>OneTrust</th>
+                    <th>Holistic AI</th>
+                    <th>IBM watsonx</th>
+                    <th>MS Purview</th>
+                    <th>Deeploy</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="sticky-col">Reverse proxy / API gateway</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐ API</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Real-time request blocking (403/402/422)</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐ Alerts</span></td>
+                    <td><span class="b b-partial">◐ DLP</span></td>
+                    <td><span class="b b-partial">◐ Alerts</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">MCP protocol support</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">REST agent proxying</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Per-request latency overhead</td>
+                    <td class="col-shield"><span class="b b-full">&lt;5ms</span></td>
+                    <td>N/A</td>
+                    <td>N/A</td>
+                    <td>N/A</td>
+                    <td>N/A</td>
+                    <td>N/A</td>
+                    <td>~20ms</td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Agent health monitoring / heartbeat</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 3.2 Policy & Access Control -->
+    <h3>3.2 Policy &amp; Access Control</h3>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th class="sticky-col">Capability</th>
+                    <th class="col-shield">AgentShield</th>
+                    <th>Credo AI</th>
+                    <th>OneTrust</th>
+                    <th>Holistic AI</th>
+                    <th>IBM watsonx</th>
+                    <th>MS Purview</th>
+                    <th>Deeploy</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="sticky-col">Real-time policy enforcement</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-partial">◐ Assess</span></td>
+                    <td><span class="b b-partial">◐ Assess</span></td>
+                    <td><span class="b b-partial">◐ Audit</span></td>
+                    <td><span class="b b-partial">◐ Alerts</span></td>
+                    <td><span class="b b-partial">◐ DLP</span></td>
+                    <td><span class="b b-partial">◐ Controls</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Attribute-based access control (ABAC)</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-partial">◐ RBAC</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">OPA/Rego policy compilation</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Visual policy builder</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-full">✓</span></td>
+                    <td><span class="b b-full">✓</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Policy simulation / playground</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">JWT + API Key + A2A identity</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-partial">◐ SSO</span></td>
+                    <td><span class="b b-partial">◐ SSO</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐ SSO</span></td>
+                    <td><span class="b b-full">✓ AAD</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 3.3 Guardrails & Content Safety -->
+    <h3>3.3 Guardrails &amp; Content Safety</h3>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th class="sticky-col">Capability</th>
+                    <th class="col-shield">AgentShield</th>
+                    <th>Credo AI</th>
+                    <th>OneTrust</th>
+                    <th>Holistic AI</th>
+                    <th>IBM watsonx</th>
+                    <th>MS Purview</th>
+                    <th>Deeploy</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="sticky-col">Input/output content guardrails</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-partial">◐ Assess</span></td>
+                    <td><span class="b b-partial">◐ Policy</span></td>
+                    <td><span class="b b-partial">◐ Audit</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-partial">◐ DLP</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">PII detection & redaction</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐ Detect</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-full">✓</span></td>
+                    <td><span class="b b-full">✓ DLP</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Prompt injection defense</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐ Red team</span></td>
+                    <td><span class="b b-full">✓</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Custom rule builder (regex, keyword, LLM)</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-full">✓</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Per-agent guardrail profiles</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 3.4 Cost & Budget -->
+    <h3>3.4 Cost Management &amp; Budgets</h3>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th class="sticky-col">Capability</th>
+                    <th class="col-shield">AgentShield</th>
+                    <th>Credo AI</th>
+                    <th>OneTrust</th>
+                    <th>Holistic AI</th>
+                    <th>IBM watsonx</th>
+                    <th>MS Purview</th>
+                    <th>Deeploy</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="sticky-col">Token/cost tracking per request</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Budget limits (user/team/dept/agent/global)</td>
+                    <td class="col-shield"><span class="b b-full">✓ 5 scopes</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Auto-block on budget exceeded</td>
+                    <td class="col-shield"><span class="b b-full">✓ 402</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Chargeback / usage reports</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 3.5 Compliance & Audit -->
+    <h3>3.5 Compliance &amp; Audit</h3>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th class="sticky-col">Capability</th>
+                    <th class="col-shield">AgentShield</th>
+                    <th>Credo AI</th>
+                    <th>OneTrust</th>
+                    <th>Holistic AI</th>
+                    <th>IBM watsonx</th>
+                    <th>MS Purview</th>
+                    <th>Deeploy</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="sticky-col">Immutable audit trail</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-full">✓</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-full">✓ Factsheets</span></td>
+                    <td><span class="b b-full">✓</span></td>
+                    <td><span class="b b-full">✓</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">SOX/HIPAA compliance sampling</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-partial">◐ Docs</span></td>
+                    <td><span class="b b-partial">◐ Assess</span></td>
+                    <td><span class="b b-partial">◐ Audit</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-partial">◐ DLP</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">EU AI Act compliance templates</td>
+                    <td class="col-shield"><span class="b b-partial">◐ Roadmap</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">NIST AI RMF / ISO 42001 mapping</td>
+                    <td class="col-shield"><span class="b b-partial">◐ Roadmap</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-full">✓</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Real-time compliance (not point-in-time)</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-partial">◐ Continuous</span></td>
+                    <td><span class="b b-partial">◐ Continuous</span></td>
+                    <td><span class="b b-none">✗ PIT</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 3.6 Evaluation & Quality -->
+    <h3>3.6 Agent Evaluation &amp; Quality</h3>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th class="sticky-col">Capability</th>
+                    <th class="col-shield">AgentShield</th>
+                    <th>Credo AI</th>
+                    <th>OneTrust</th>
+                    <th>Holistic AI</th>
+                    <th>IBM watsonx</th>
+                    <th>MS Purview</th>
+                    <th>Deeploy</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="sticky-col">LLM-as-a-Judge evaluation</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Persona-driven simulation</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐ Red team</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">3-layer scoring (Node/Session/System)</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Human-in-the-loop (HITL) review</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-full">✓</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Bias / fairness testing</td>
+                    <td class="col-shield"><span class="b b-partial">◐ Roadmap</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Model explainability (SHAP/LIME)</td>
+                    <td class="col-shield"><span class="b b-none">✗ N/A</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-full">✓</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-full">✓</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 3.7 Agent Registry -->
+    <h3>3.7 Agent Registry &amp; Discovery</h3>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th class="sticky-col">Capability</th>
+                    <th class="col-shield">AgentShield</th>
+                    <th>Credo AI</th>
+                    <th>OneTrust</th>
+                    <th>Holistic AI</th>
+                    <th>IBM watsonx</th>
+                    <th>MS Purview</th>
+                    <th>Deeploy</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="sticky-col">Unified agent registry</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-partial">◐ AI Inventory</span></td>
+                    <td><span class="b b-partial">◐ AI Inventory</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-full">✓ Catalog</span></td>
+                    <td><span class="b b-partial">◐ Discovery</span></td>
+                    <td><span class="b b-partial">◐ Models</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">MCP + REST + A2A protocol support</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Shadow AI discovery</td>
+                    <td class="col-shield"><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-full">✓</span></td>
+                    <td><span class="b b-full">✓</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">Module enable/disable toggles</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-partial">◐</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ══════════ 4-9. PER-COMPETITOR DEEP DIVES ══════════ -->
+
+<!-- CREDO AI -->
+<section id="credo">
+    <h2><span class="num">4.</span> AgentShield vs. Credo AI</h2>
+    <div class="comp-card">
+        <div class="comp-header">
+            <div class="logo" style="background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff">C</div>
+            <div>
+                <h3>Credo AI</h3>
+                <div class="tagline">Policy-driven governance and automated risk scoring</div>
+            </div>
+            <div style="margin-left:auto">
+                <span class="b b-purple">GRC Platform</span>
+                <span class="b b-info" style="margin-left:6px">Enterprise SaaS</span>
+            </div>
+        </div>
+        <div class="comp-body">
+            <div class="comp-section">
+                <h4>Where Credo AI is Strong</h4>
+                <ul class="strengths">
+                    <li>Pre-built Policy Packs for EU AI Act, NIST, ISO 42001, HITRUST</li>
+                    <li>GAIA — multi-layer governance (Model/Agent/App/Network)</li>
+                    <li>Risk Register with automated control suggestions</li>
+                    <li>Continuous monitoring for hallucination & drift detection</li>
+                    <li>Recognized by Forrester & Gartner as governance leader</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Where AgentShield Wins</h4>
+                <ul class="strengths">
+                    <li><strong>Runtime enforcement</strong> — blocks requests in real-time vs. risk assessment reports</li>
+                    <li><strong>Agent gateway</strong> — transparent proxy, no SDK integration needed</li>
+                    <li><strong>Cost/budget enforcement</strong> — 5-scope budget limits with auto-block</li>
+                    <li><strong>Content guardrails</strong> — per-agent regex/keyword/LLM rules inline</li>
+                    <li><strong>MCP protocol</strong> — native support, Credo has none</li>
+                    <li><strong>Self-hosted</strong> — no vendor lock-in, data stays on-premise</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Where Credo AI Wins</h4>
+                <ul class="weaknesses">
+                    <li>Regulatory compliance templates (EU AI Act, ISO 42001) are production-ready</li>
+                    <li>Analyst recognition — Gartner/Forrester-validated</li>
+                    <li>Risk quantification — automated scoring with compliance evidence</li>
+                    <li>Bias & fairness assessment tooling</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Key Positioning</h4>
+                <ul>
+                    <li>Credo tells you <em>"this agent is risky"</em> — AgentShield <em>blocks that agent from being called</em></li>
+                    <li>They are <strong>complementary</strong>: Credo for risk assessment, AgentShield for enforcement</li>
+                    <li>For customers who need runtime control, Credo alone is insufficient</li>
+                </ul>
+            </div>
+            <div class="comp-verdict">
+                <div class="icon">🎯</div>
+                <div><strong>Sales Angle:</strong> "Credo AI is excellent at telling you <em>what</em> the risk is. AgentShield is what <em>stops</em> the risk from happening. Think of Credo as the auditor and AgentShield as the security guard. You need both, but only one of them prevents the breach in real time."</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ONETRUST -->
+<section id="onetrust">
+    <h2><span class="num">5.</span> AgentShield vs. OneTrust AI Governance</h2>
+    <div class="comp-card">
+        <div class="comp-header">
+            <div class="logo" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff">OT</div>
+            <div>
+                <h3>OneTrust AI Governance</h3>
+                <div class="tagline">Privacy-first AI governance with GRC integration</div>
+            </div>
+            <div style="margin-left:auto">
+                <span class="b b-purple">Privacy + GRC</span>
+                <span class="b b-info" style="margin-left:6px">$50K–$300K+/yr</span>
+            </div>
+        </div>
+        <div class="comp-body">
+            <div class="comp-section">
+                <h4>Where OneTrust is Strong</h4>
+                <ul class="strengths">
+                    <li>Unified privacy + AI governance + vendor risk (TPRM) in one platform</li>
+                    <li>AI inventory with automated shadow AI discovery</li>
+                    <li>Pre-built templates for EU AI Act, NIST, ISO 42001</li>
+                    <li>Continuous monitoring with risk tiering</li>
+                    <li>Gartner "Visionary" — massive enterprise install base</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Where AgentShield Wins</h4>
+                <ul class="strengths">
+                    <li><strong>Runtime enforcement</strong> — OneTrust defines policies, AgentShield enforces them at the wire level</li>
+                    <li><strong>10-100× cheaper</strong> — self-hosted vs. $50K–$300K+ annual contracts</li>
+                    <li><strong>Agent-native</strong> — MCP/REST/A2A support vs. model-centric inventory</li>
+                    <li><strong>Cost management</strong> — token-level budgets with per-request tracking</li>
+                    <li><strong>Agent evaluation</strong> — LLM-as-Judge, persona simulation, HITL review</li>
+                    <li><strong>Zero SDK dependency</strong> — transparent proxy vs. integration required</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Where OneTrust Wins</h4>
+                <ul class="weaknesses">
+                    <li>Privacy program integration (GDPR, CCPA workflows built-in)</li>
+                    <li>Third-party vendor risk management</li>
+                    <li>Shadow AI auto-discovery across cloud/SaaS</li>
+                    <li>Enterprise sales/support infrastructure</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Key Positioning</h4>
+                <ul>
+                    <li>OneTrust is a <em>compliance documentation platform</em> — AgentShield is a <em>runtime firewall</em></li>
+                    <li>Their guardrails are "programmatic guidelines" — ours <em>block the request</em> returning 422</li>
+                    <li>Price disparity is the strongest objection-handler: $300K vs. self-hosted</li>
+                </ul>
+            </div>
+            <div class="comp-verdict">
+                <div class="icon">🎯</div>
+                <div><strong>Sales Angle:</strong> "OneTrust is perfect if your primary concern is privacy compliance paperwork. If your concern is <em>preventing an AI agent from spending $50K on OpenAI calls overnight</em> or <em>leaking customer PII in a chatbot response</em>, you need AgentShield enforcing in real time."</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- HOLISTIC AI -->
+<section id="holistic">
+    <h2><span class="num">6.</span> AgentShield vs. Holistic AI</h2>
+    <div class="comp-card">
+        <div class="comp-header">
+            <div class="logo" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff">H</div>
+            <div>
+                <h3>Holistic AI</h3>
+                <div class="tagline">Automated auditing and quantitative risk assessments</div>
+            </div>
+            <div style="margin-left:auto">
+                <span class="b b-purple">AI Auditing</span>
+                <span class="b b-info" style="margin-left:6px">Enterprise SaaS</span>
+            </div>
+        </div>
+        <div class="comp-body">
+            <div class="comp-section">
+                <h4>Where Holistic AI is Strong</h4>
+                <ul class="strengths">
+                    <li>Quantitative bias, fairness & robustness testing with statistical rigor</li>
+                    <li>Red teaming capabilities for GenAI</li>
+                    <li>EU AI Act compliance automation with documentation generation</li>
+                    <li>Shadow AI discovery</li>
+                    <li>Academic-grade risk assessment methodology (UCL spin-out)</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Where AgentShield Wins</h4>
+                <ul class="strengths">
+                    <li><strong>Runtime vs. audit-time</strong> — Holistic audits periodically; we enforce every request</li>
+                    <li><strong>Agent-native</strong> — Holistic focuses on models; we govern agents end-to-end</li>
+                    <li><strong>Budget control</strong> — no cost management in Holistic</li>
+                    <li><strong>Live guardrails</strong> — block PII/injection in the request path</li>
+                    <li><strong>Policy engine</strong> — OPA-backed ABAC vs. no access control</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Where Holistic AI Wins</h4>
+                <ul class="weaknesses">
+                    <li>Quantitative bias metrics (statistical parity, equalized odds)</li>
+                    <li>Red teaming & adversarial testing at scale</li>
+                    <li>Compliance documentation generation</li>
+                    <li>Point-in-time audit reports for regulators</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Key Positioning</h4>
+                <ul>
+                    <li>Holistic AI is a <em>"compliance auditor"</em> — AgentShield is the <em>"security guard"</em></li>
+                    <li>Their reports tell you <em>"this model has bias"</em> — they can't prevent a biased response from reaching a user</li>
+                    <li>Best positioned as complementary: Holistic for audit + AgentShield for enforcement</li>
+                </ul>
+            </div>
+            <div class="comp-verdict">
+                <div class="icon">🎯</div>
+                <div><strong>Sales Angle:</strong> "Holistic AI tells you on Thursday that your agent had a bias issue on Monday. AgentShield prevents the biased response from leaving the system in the first place."</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- IBM watsonx.governance -->
+<section id="ibm">
+    <h2><span class="num">7.</span> AgentShield vs. IBM watsonx.governance</h2>
+    <div class="comp-card">
+        <div class="comp-header">
+            <div class="logo" style="background:linear-gradient(135deg,#0f62fe,#4589ff);color:#fff">IBM</div>
+            <div>
+                <h3>IBM watsonx.governance</h3>
+                <div class="tagline">Lineage, explainability, and model oversight</div>
+            </div>
+            <div style="margin-left:auto">
+                <span class="b b-purple">Model Lifecycle</span>
+                <span class="b b-info" style="margin-left:6px">Enterprise License</span>
+            </div>
+        </div>
+        <div class="comp-body">
+            <div class="comp-section">
+                <h4>Where IBM watsonx is Strong</h4>
+                <ul class="strengths">
+                    <li>AI Factsheets — "nutritional labels" for models with full lineage</li>
+                    <li>Explainability tooling (SHAP, counterfactuals)</li>
+                    <li>Agentic AI monitoring (2026 release) with SOC-team alerting</li>
+                    <li>Custom guardrail detectors via Guardrail Manager</li>
+                    <li>Multi-vendor Governance Graph (Azure, Bedrock, Vertex AI)</li>
+                    <li>EU AI Act / NIST compliance accelerators</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Where AgentShield Wins</h4>
+                <ul class="strengths">
+                    <li><strong>Agent-first vs. model-first</strong> — watsonx governs models; we govern live agents</li>
+                    <li><strong>Lightweight</strong> — Docker compose vs. OpenShift/IBM Cloud</li>
+                    <li><strong>Budget enforcement</strong> — watsonx has no cost management</li>
+                    <li><strong>Protocol native</strong> — MCP/REST/A2A vs. API-only monitoring</li>
+                    <li><strong>No vendor lock-in</strong> — self-hosted, no IBM Cloud dependency</li>
+                    <li><strong>Policy playground</strong> — test policies before deployment</li>
+                    <li><strong>Speed to deploy</strong> — hours, not weeks of IBM professional services</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Where IBM watsonx Wins</h4>
+                <ul class="weaknesses">
+                    <li>Model explainability (SHAP, LIME, counterfactuals) — deep ML focus</li>
+                    <li>Data lineage tracking (source → feature → model → prediction)</li>
+                    <li>Enterprise-grade support with IBM Global Services</li>
+                    <li>Multi-cloud governance graph across vendors</li>
+                    <li>Established enterprise procurement relationships</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Key Positioning</h4>
+                <ul>
+                    <li>watsonx governs the <em>model lifecycle</em> (training → deployment → retirement)</li>
+                    <li>AgentShield governs the <em>agent call path</em> (request → policy → budget → guardrails → response)</li>
+                    <li>IBM's strength is explaining <em>why</em> a model decided something. Ours is <em>controlling what happens next</em>.</li>
+                </ul>
+            </div>
+            <div class="comp-verdict">
+                <div class="icon">🎯</div>
+                <div><strong>Sales Angle:</strong> "IBM watsonx tells you the model is fair and well-documented. But when that model is called 10,000 times a day by autonomous agents, who controls the budget? Who blocks prompt injection? Who enforces access policies? That's AgentShield."</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- MICROSOFT PURVIEW -->
+<section id="purview">
+    <h2><span class="num">8.</span> AgentShield vs. Microsoft Purview</h2>
+    <div class="comp-card">
+        <div class="comp-header">
+            <div class="logo" style="background:linear-gradient(135deg,#0078d4,#50e6ff);color:#fff">MP</div>
+            <div>
+                <h3>Microsoft Purview</h3>
+                <div class="tagline">Shadow AI discovery and data sensitivity monitoring</div>
+            </div>
+            <div style="margin-left:auto">
+                <span class="b b-purple">Data Security</span>
+                <span class="b b-info" style="margin-left:6px">M365 Bundle</span>
+            </div>
+        </div>
+        <div class="comp-body">
+            <div class="comp-section">
+                <h4>Where Microsoft Purview is Strong</h4>
+                <ul class="strengths">
+                    <li>Shadow AI discovery — which AI tools employees are using</li>
+                    <li>Endpoint DLP — block paste/upload of sensitive data to AI chatbots</li>
+                    <li>Browser-level prompt inspection (Edge) for consumer AI</li>
+                    <li>Sensitivity label enforcement — encrypted content can't reach AI</li>
+                    <li>Unified data security posture management (DSPM) for AI</li>
+                    <li>Deep Microsoft 365 ecosystem integration</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Where AgentShield Wins</h4>
+                <ul class="strengths">
+                    <li><strong>Agent governance</strong> — Purview protects data; we govern agent behavior</li>
+                    <li><strong>Cloud-agnostic</strong> — works with any cloud/on-prem vs. Azure-locked</li>
+                    <li><strong>Policy engine</strong> — ABAC with OPA vs. Microsoft RBAC only</li>
+                    <li><strong>Budget enforcement</strong> — Purview has no cost management</li>
+                    <li><strong>Agent evaluation</strong> — LLM-as-Judge vs. no evaluation capability</li>
+                    <li><strong>Compliance sampling</strong> — SOX/HIPAA-grade audit of agent I/O</li>
+                    <li><strong>MCP/REST native</strong> — protocol-aware agent proxy</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Where Microsoft Purview Wins</h4>
+                <ul class="weaknesses">
+                    <li>Shadow AI discovery (tracking unsanctioned AI tool usage)</li>
+                    <li>Endpoint DLP for browser-level data leak prevention</li>
+                    <li>Seamless M365/Azure/Copilot ecosystem integration</li>
+                    <li>Sensitivity labeling and encryption</li>
+                    <li>Built-in for Microsoft shops — zero additional procurement</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Key Positioning</h4>
+                <ul>
+                    <li>Purview answers: <em>"Is sensitive data leaking to AI?"</em></li>
+                    <li>AgentShield answers: <em>"Are our agents behaving within policy, budget, and content rules?"</em></li>
+                    <li>Different attack surfaces — Purview protects data <em>from</em> AI, AgentShield governs AI <em>itself</em></li>
+                </ul>
+            </div>
+            <div class="comp-verdict">
+                <div class="icon">🎯</div>
+                <div><strong>Sales Angle:</strong> "Microsoft Purview prevents an employee from pasting a credit card number into ChatGPT. AgentShield prevents your customer-facing AI agent from generating an unauthorized discount, exceeding your department's AI budget, or bypassing access controls. They solve different problems."</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- DEEPLOY -->
+<section id="deeploy">
+    <h2><span class="num">9.</span> AgentShield vs. Deeploy</h2>
+    <div class="comp-card">
+        <div class="comp-header">
+            <div class="logo" style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff">D</div>
+            <div>
+                <h3>Deeploy</h3>
+                <div class="tagline">Compliance integrated directly into runtime AI operations</div>
+            </div>
+            <div style="margin-left:auto">
+                <span class="b b-purple">MLOps + Compliance</span>
+                <span class="b b-info" style="margin-left:6px">Enterprise SaaS</span>
+            </div>
+        </div>
+        <div class="comp-body">
+            <div class="comp-section">
+                <h4>Where Deeploy is Strong</h4>
+                <ul class="strengths">
+                    <li>Compliance embedded directly in MLOps deployment pipeline</li>
+                    <li>Runtime monitoring with drift detection & alerting</li>
+                    <li>Explainability tools for black-box models</li>
+                    <li>EU AI Act control frameworks with automated evidence</li>
+                    <li>Full traceability & audit trails for model decisions</li>
+                    <li>Human-in-the-loop review workflows</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Where AgentShield Wins</h4>
+                <ul class="strengths">
+                    <li><strong>Agent-native vs. model-native</strong> — we govern multi-model agents, not individual models</li>
+                    <li><strong>Gateway architecture</strong> — transparent proxy vs. SDK-integrated platform</li>
+                    <li><strong>Policy enforcement</strong> — ABAC with OPA vs. control checklists</li>
+                    <li><strong>Budget management</strong> — 5-scope budgets with auto-block</li>
+                    <li><strong>Protocol support</strong> — MCP/REST/A2A first-class support</li>
+                    <li><strong>Content guardrails</strong> — input/output filtering with PII detection</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Where Deeploy Wins</h4>
+                <ul class="weaknesses">
+                    <li>MLOps pipeline integration (CI/CD → deploy → monitor)</li>
+                    <li>Model explainability (decision reasoning)</li>
+                    <li>Drift detection & data quality monitoring</li>
+                    <li>Structured EU AI Act control framework</li>
+                </ul>
+            </div>
+            <div class="comp-section">
+                <h4>Key Positioning</h4>
+                <ul>
+                    <li>Deeploy is the <strong>closest competitor</strong> in philosophy — both believe governance belongs in runtime</li>
+                    <li>Key difference: Deeploy is model-centric (deploy → monitor); AgentShield is agent-centric (proxy → enforce)</li>
+                    <li>Deeploy requires integration into the deployment pipeline; AgentShield deploys alongside existing agents</li>
+                </ul>
+            </div>
+            <div class="comp-verdict">
+                <div class="icon">🎯</div>
+                <div><strong>Sales Angle:</strong> "Deeploy is the closest to our philosophy — we both believe governance must be in the runtime. The difference is that Deeploy requires you to deploy models <em>through</em> their platform. AgentShield works with agents you've <em>already deployed anywhere</em> — just point your traffic through our gateway."</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ══════════ 10. POSITIONING ══════════ -->
+<section id="positioning">
+    <h2><span class="num">10.</span> Strategic Positioning Summary</h2>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:18%">Dimension</th>
+                    <th style="width:42%">Competitor Landscape</th>
+                    <th style="width:40%">AgentShield Advantage</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Approach</strong></td>
+                    <td>Document, assess, report (GRC-first)</td>
+                    <td><strong>Enforce at the wire level</strong> — every request is policy-checked, budget-checked, content-filtered</td>
+                </tr>
+                <tr>
+                    <td><strong>Target</strong></td>
+                    <td>Govern <em>models</em> or <em>data</em></td>
+                    <td><strong>Govern <em>agents</em></strong> — autonomous, multi-model, tool-using entities</td>
+                </tr>
+                <tr>
+                    <td><strong>Integration</strong></td>
+                    <td>SDK / pipeline integration required</td>
+                    <td><strong>Transparent proxy</strong> — zero code changes to agents</td>
+                </tr>
+                <tr>
+                    <td><strong>Cost</strong></td>
+                    <td>$50K–$300K+ annual enterprise contracts</td>
+                    <td><strong>Self-hosted, free core</strong> — customer owns infrastructure</td>
+                </tr>
+                <tr>
+                    <td><strong>Protocols</strong></td>
+                    <td>API-only, no agent protocol awareness</td>
+                    <td><strong>MCP + REST + A2A native</strong> — purpose-built for agent architectures</td>
+                </tr>
+                <tr>
+                    <td><strong>Cost Control</strong></td>
+                    <td>None (0 of 6 competitors)</td>
+                    <td><strong>5-scope budgets with real-time enforcement</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Timing</strong></td>
+                    <td>Point-in-time audits or continuous monitoring</td>
+                    <td><strong>Per-request, inline</strong> — policy decision on every call</td>
+                </tr>
+                <tr>
+                    <td><strong>Deployment</strong></td>
+                    <td>SaaS (data leaves your infrastructure)</td>
+                    <td><strong>Self-hosted</strong> — no data leaves your network</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="alert alert-info">
+        <div class="at">📊 Summary Stat</div>
+        Of the <strong>42 capabilities</strong> compared, AgentShield has <strong>full coverage on 28</strong>, partial on 5, and 9 on roadmap. The next closest competitor (IBM watsonx) covers 18 with full support. <strong>No competitor covers agent gateway, cost management, and content guardrails together.</strong>
+    </div>
+</section>
+
+<!-- ══════════ 11. BATTLECARD ══════════ -->
+<section id="battlecard">
+    <h2><span class="num">11.</span> Sales Battlecard — Handling Objections</h2>
+
+    <div class="battlecard">
+        <h4>🗣️ Common Objections &amp; Responses</h4>
+
+        <div class="objection">
+            <div class="q">"We already have Credo AI / OneTrust for AI governance."</div>
+            <div class="a">Great — those handle documentation and risk assessment. But when an agent tries to call a restricted endpoint at 2 AM, who blocks it? Credo will log it in a risk register tomorrow. AgentShield returns a 403 in 5 milliseconds. <strong>We're the enforcement layer your governance platform is missing.</strong></div>
+        </div>
+
+        <div class="objection">
+            <div class="q">"IBM watsonx covers governance and explainability."</div>
+            <div class="a">watsonx is excellent for model lifecycle — training, lineage, explainability. But agents aren't models — they're autonomous systems calling 5 different APIs per request. watsonx can't enforce a budget limit, block prompt injection, or proxy MCP traffic. <strong>We govern the agent, not just the model inside it.</strong></div>
+        </div>
+
+        <div class="objection">
+            <div class="q">"We're a Microsoft shop — Purview handles our AI governance."</div>
+            <div class="a">Purview protects your <em>data</em> from AI (DLP, sensitivity labels). AgentShield protects your <em>organization</em> from agent behavior — who can call which agent, how much they can spend, what content is allowed. <strong>Different attack surface, different product.</strong> They're complementary.</div>
+        </div>
+
+        <div class="objection">
+            <div class="q">"AgentShield is unknown — these are established vendors."</div>
+            <div class="a">Those vendors have been governing models for years. <strong>Agent governance is a new category</strong> — none of them have a runtime agent firewall because they weren't designed for agentic architectures. We're purpose-built for MCP/A2A/REST agents. That's why there's no checkbox for "agent gateway" in their feature lists.</div>
+        </div>
+
+        <div class="objection">
+            <div class="q">"Self-hosted sounds like a lot of operational burden."</div>
+            <div class="a">It's a single Docker Compose with PostgreSQL. No Kubernetes required for initial deployment. Your data never leaves your network — critical for HIPAA/SOX. And there's no $300K annual license renewal. <strong>Total cost of ownership is a fraction of any SaaS competitor.</strong></div>
+        </div>
+
+        <div class="objection">
+            <div class="q">"You don't have EU AI Act compliance templates."</div>
+            <div class="a">Correct — and that's our roadmap. But consider this: EU AI Act says high-risk systems require <em>human oversight</em> and <em>risk mitigation measures</em>. Our HITL review, per-agent guardrails, and policy enforcement are exactly those measures. <strong>We implement the technical controls the regulation requires — we just don't generate the paperwork yet.</strong> Pair us with Credo/OneTrust for the documentation layer.</div>
+        </div>
+    </div>
+</section>
+
+<!-- ══════════ 12. WIN/LOSS SCENARIOS ══════════ -->
+<section id="when">
+    <h2><span class="num">12.</span> When AgentShield Wins / Loses</h2>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:50%">✅ AgentShield WINS When...</th>
+                    <th style="width:50%">⚠️ AgentShield LOSES When...</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Customer has <strong>live AI agents</strong> in production that need runtime governance</td>
+                    <td>Customer only needs <strong>model documentation</strong> and regulatory paperwork (→ Credo, OneTrust)</td>
+                </tr>
+                <tr>
+                    <td>Customer needs to <strong>control AI spending</strong> with per-user/team budgets</td>
+                    <td>Customer is purely a <strong>Microsoft 365 shop</strong> only concerned about employee AI data leaks (→ Purview)</td>
+                </tr>
+                <tr>
+                    <td>Customer uses <strong>MCP protocol</strong> or multi-agent architectures</td>
+                    <td>Customer needs deep <strong>model explainability</strong> (SHAP/LIME) for regulatory audit (→ IBM, Holistic AI)</td>
+                </tr>
+                <tr>
+                    <td>Customer requires <strong>self-hosted</strong> / air-gapped deployment for compliance</td>
+                    <td>Customer's primary concern is <strong>bias & fairness testing</strong> for ML models (→ Holistic AI, Credo)</td>
+                </tr>
+                <tr>
+                    <td>Customer wants <strong>zero-integration governance</strong> (transparent proxy)</td>
+                    <td>Customer needs governance embedded in <strong>ML training pipelines</strong> (→ Deeploy, IBM)</td>
+                </tr>
+                <tr>
+                    <td>Customer is <strong>cost-sensitive</strong> and refuses $300K SaaS contracts</td>
+                    <td>Customer mandates <strong>Gartner/Forrester-validated</strong> vendors in procurement</td>
+                </tr>
+                <tr>
+                    <td>Customer needs <strong>content guardrails</strong> (PII, injection, profanity) on agent I/O</td>
+                    <td>Customer has no AI agents yet — they're still in the <strong>PoC/exploration</strong> phase</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="alert alert-tip">
+        <div class="at">💡 The #1 Qualifying Question</div>
+        <strong>"Do you have AI agents running in production today?"</strong> If yes, AgentShield wins. If they're still evaluating models or building prototypes, the GRC platforms (Credo, OneTrust) are a better fit <em>for now</em> — but position AgentShield as the enforcement layer they'll need when they go live.
+    </div>
+</section>
+
+</div>
+
+<footer>
+    <p>AgentShield — Competitive Analysis 2026 &nbsp;|&nbsp; Confidential — Sales Enablement &nbsp;|&nbsp; Generated June 2026</p>
+    <p style="margin-top:8px;color:var(--text-dim)">Research based on publicly available product documentation, analyst reports, and web research as of June 2026.</p>
+</footer>
+
+</body>
+</html>
