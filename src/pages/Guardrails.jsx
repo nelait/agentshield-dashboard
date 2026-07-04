@@ -65,10 +65,14 @@ export default function Guardrails() {
 
     // Rule state
     const [showRuleModal, setShowRuleModal] = useState(false);
+    const [expandedRuleId, setExpandedRuleId] = useState(null);
     const [ruleForm, setRuleForm] = useState({
         name: '', description: '', ruleType: 'content_filter', scope: 'both', severity: 'high',
         config: { keywords: [] },
     });
+
+    // Profile name duplicate check
+    const [profileNameError, setProfileNameError] = useState('');
 
     // Assignment state
     const [assignAgentId, setAssignAgentId] = useState('');
@@ -106,6 +110,7 @@ export default function Guardrails() {
 
     // ─── Profile CRUD ───
     const handleSaveProfile = async () => {
+        setProfileNameError('');
         try {
             if (editingProfile) {
                 await api.updateGuardrailProfile(editingProfile.id, profileForm);
@@ -115,8 +120,15 @@ export default function Guardrails() {
             setShowProfileModal(false);
             setEditingProfile(null);
             setProfileForm({ name: '', description: '', mode: 'block' });
+            setProfileNameError('');
             loadData();
-        } catch (err) { alert(err.message); }
+        } catch (err) {
+            if (err.message?.includes('already exists')) {
+                setProfileNameError(err.message);
+            } else {
+                alert(err.message);
+            }
+        }
     };
 
     const handleDeleteProfile = async (id) => {
@@ -310,6 +322,139 @@ export default function Guardrails() {
         }
     };
 
+    // ─── Rule Config Detail Renderer ───
+    const renderRuleConfigDetail = (rule) => {
+        const config = typeof rule.config === 'string' ? JSON.parse(rule.config) : (rule.config || {});
+        const rt = rule.rule_type;
+
+        const ConfigRow = ({ label, children }) => (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 6, fontSize: 12 }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-muted)', minWidth: 120, flexShrink: 0 }}>{label}</span>
+                <div style={{ flex: 1 }}>{children}</div>
+            </div>
+        );
+
+        const TagList = ({ items, color = 'blue' }) => (
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {(items || []).map((item, i) => (
+                    <span key={i} className={`badge ${color}`} style={{ fontSize: 10, padding: '2px 8px' }}>{item}</span>
+                ))}
+                {(!items || items.length === 0) && <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>None configured</span>}
+            </div>
+        );
+
+        return (
+            <div style={{ padding: '12px 16px', background: 'var(--bg-input)', borderRadius: 8, marginTop: 8, border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10,
+                    display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {RULE_TYPES[rt]?.icon} {RULE_TYPES[rt]?.label} Configuration
+                </div>
+
+                {rt === 'content_filter' && (
+                    <>
+                        <ConfigRow label="Blocked Keywords">
+                            <TagList items={config.keywords} color="red" />
+                        </ConfigRow>
+                        <ConfigRow label="Case Sensitive">
+                            <span className={`badge ${config.caseSensitive ? 'green' : 'gray'}`} style={{ fontSize: 10 }}>
+                                {config.caseSensitive ? 'Yes' : 'No (default)'}
+                            </span>
+                        </ConfigRow>
+                    </>
+                )}
+
+                {rt === 'pii_shield' && (
+                    <ConfigRow label="PII Patterns">
+                        <TagList items={config.patterns} color="blue" />
+                    </ConfigRow>
+                )}
+
+                {rt === 'prompt_injection' && (
+                    <>
+                        <ConfigRow label="Built-in Detection">
+                            <span className="badge green" style={{ fontSize: 10 }}>✓ Always Active</span>
+                        </ConfigRow>
+                        {config.extraPatterns?.length > 0 && (
+                            <ConfigRow label="Extra Patterns">
+                                <div style={{ display: 'grid', gap: 3 }}>
+                                    {config.extraPatterns.map((p, i) => (
+                                        <code key={i} style={{ fontSize: 11, padding: '2px 6px', background: 'rgba(99,102,241,0.1)', borderRadius: 4, color: 'var(--accent-primary)', wordBreak: 'break-all' }}>{p}</code>
+                                    ))}
+                                </div>
+                            </ConfigRow>
+                        )}
+                    </>
+                )}
+
+                {rt === 'topic_boundary' && (
+                    <>
+                        <ConfigRow label="Allowed Topics">
+                            <TagList items={config.allowedTopics} color="green" />
+                        </ConfigRow>
+                        <ConfigRow label="Blocked Topics">
+                            <TagList items={config.blockedTopics} color="red" />
+                        </ConfigRow>
+                    </>
+                )}
+
+                {rt === 'token_limit' && (
+                    <ConfigRow label="Max Tokens">
+                        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{(config.maxTokens || 4096).toLocaleString()}</span>
+                    </ConfigRow>
+                )}
+
+                {rt === 'custom_regex' && (
+                    <ConfigRow label="Custom Patterns">
+                        <div style={{ display: 'grid', gap: 4 }}>
+                            {(config.patterns || []).map((p, i) => (
+                                <div key={i} style={{ padding: '4px 8px', background: 'rgba(59,130,246,0.06)', borderRadius: 6, fontSize: 11 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontWeight: 600, color: 'var(--info)' }}>{p.label || `Pattern ${i + 1}`}</span>
+                                        {p.flags && <span className="badge gray" style={{ fontSize: 9 }}>/{p.flags}</span>}
+                                    </div>
+                                    <code style={{ fontSize: 10, color: 'var(--text-secondary)', wordBreak: 'break-all' }}>{p.pattern}</code>
+                                </div>
+                            ))}
+                            {(!config.patterns || config.patterns.length === 0) && <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: 12 }}>No patterns configured</span>}
+                        </div>
+                    </ConfigRow>
+                )}
+
+                {rt === 'output_format' && (
+                    <>
+                        <ConfigRow label="Require JSON">
+                            <span className={`badge ${config.requireJson ? 'green' : 'gray'}`} style={{ fontSize: 10 }}>
+                                {config.requireJson ? '✓ Required' : 'Not Required'}
+                            </span>
+                        </ConfigRow>
+                        <ConfigRow label="Max Length">
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                                {config.maxLength ? `${config.maxLength.toLocaleString()} chars` : 'No limit'}
+                            </span>
+                        </ConfigRow>
+                    </>
+                )}
+
+                {rt === 'llm_judge' && (
+                    <ConfigRow label="Config">
+                        <pre style={{ fontSize: 10, padding: 8, background: 'var(--bg-card)', borderRadius: 6, margin: 0, overflow: 'auto', maxHeight: 120 }}>
+                            {JSON.stringify(config, null, 2)}
+                        </pre>
+                    </ConfigRow>
+                )}
+
+                {/* Raw JSON fallback for unknown types */}
+                {!['content_filter', 'pii_shield', 'prompt_injection', 'topic_boundary', 'token_limit', 'custom_regex', 'output_format', 'llm_judge'].includes(rt) && (
+                    <ConfigRow label="Raw Config">
+                        <pre style={{ fontSize: 10, padding: 8, background: 'var(--bg-card)', borderRadius: 6, margin: 0, overflow: 'auto', maxHeight: 120 }}>
+                            {JSON.stringify(config, null, 2)}
+                        </pre>
+                    </ConfigRow>
+                )}
+            </div>
+        );
+    };
+
     const formatDate = (ts) => ts ? new Date(ts).toLocaleString() : '—';
 
     const TABS = [
@@ -438,14 +583,17 @@ export default function Guardrails() {
                                     <div style={{ display: 'grid', gap: 8 }}>
                                         {selectedProfile.rules.map(rule => {
                                             const rt = RULE_TYPES[rule.rule_type] || {};
+                                            const isExpanded = expandedRuleId === rule.id;
                                             return (
                                                 <div key={rule.id} style={{
                                                     padding: '12px 16px', borderRadius: 8, border: '1px solid var(--border-color)',
                                                     background: rule.is_enabled ? 'var(--bg-card)' : 'rgba(107,114,128,0.05)',
                                                     opacity: rule.is_enabled ? 1 : 0.6,
                                                     borderLeft: `4px solid ${SEVERITY_COLORS[rule.severity] || '#6b7280'}`,
+                                                    transition: 'all 0.15s ease',
                                                 }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+                                                         onClick={() => setExpandedRuleId(isExpanded ? null : rule.id)}>
                                                         <span style={{ fontSize: 20 }}>{rt.icon || '📋'}</span>
                                                         <div style={{ flex: 1 }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
@@ -457,8 +605,13 @@ export default function Guardrails() {
                                                                 {rule.description || rt.description} • {SEVERITY_LABELS[rule.severity]}
                                                             </div>
                                                         </div>
-                                                        <button className="btn-icon" onClick={() => handleDeleteRule(rule.id)}><HiTrash /></button>
+                                                        <button className="btn-icon" title="View rule details"
+                                                            style={{ color: isExpanded ? 'var(--accent-primary)' : 'var(--text-muted)', transition: 'color 0.15s' }}>
+                                                            <HiEye />
+                                                        </button>
+                                                        <button className="btn-icon" onClick={(e) => { e.stopPropagation(); handleDeleteRule(rule.id); }}><HiTrash /></button>
                                                     </div>
+                                                    {isExpanded && renderRuleConfigDetail(rule)}
                                                 </div>
                                             );
                                         })}
@@ -722,8 +875,15 @@ export default function Guardrails() {
                         <div className="modal-body">
                             <div className="form-group" style={{ marginBottom: 12 }}>
                                 <label>Profile Name</label>
-                                <input className="form-input" value={profileForm.name} onChange={e => setProfileForm({ ...profileForm, name: e.target.value })}
-                                    placeholder="e.g., PII Protection Suite" />
+                                <input className="form-input" value={profileForm.name}
+                                    onChange={e => { setProfileForm({ ...profileForm, name: e.target.value }); setProfileNameError(''); }}
+                                    placeholder="e.g., PII Protection Suite"
+                                    style={profileNameError ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : {}} />
+                                {profileNameError && (
+                                    <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <HiExclamationTriangle style={{ fontSize: 14 }} /> {profileNameError}
+                                    </div>
+                                )}
                             </div>
                             <div className="form-group" style={{ marginBottom: 12 }}>
                                 <label>Description</label>
