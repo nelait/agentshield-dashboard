@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { HiSquares2X2, HiServer, HiShieldCheck, HiShieldExclamation, HiArrowsRightLeft, HiDocumentText, HiCurrencyDollar, HiClipboardDocumentList, HiBeaker, HiArrowRightOnRectangle, HiCog6Tooth, HiChartBar, HiSignal, HiCodeBracket } from 'react-icons/hi2';
+import { HiSquares2X2, HiServer, HiShieldCheck, HiShieldExclamation, HiArrowsRightLeft, HiDocumentText, HiCurrencyDollar, HiClipboardDocumentList, HiBeaker, HiArrowRightOnRectangle, HiCog6Tooth, HiChartBar, HiSignal, HiCodeBracket, HiDocumentChartBar, HiUsers } from 'react-icons/hi2';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Agents from './pages/Agents';
@@ -14,6 +14,8 @@ import Settings from './pages/Settings';
 import Observability from './pages/Observability';
 import Guardrails from './pages/Guardrails';
 import Integrations from './pages/Integrations';
+import Reports from './pages/Reports';
+import Admin from './pages/Admin';
 import api, { clearToken, onSessionExpired } from './api';
 import './index.css';
 
@@ -46,13 +48,15 @@ const NAV_ITEMS = [
   {
     section: 'Monitoring', items: [
       { key: 'audit', label: 'Audit Log', icon: HiClipboardDocumentList },
+      { key: 'reports', label: 'Reports', icon: HiDocumentChartBar },
       { key: 'observability', label: 'Observability', icon: HiSignal },
     ]
   },
   {
     section: 'System', items: [
+      { key: 'admin', label: 'Admin', icon: HiUsers, minRole: 'admin' },
       { key: 'integrations', label: 'Integrations', icon: HiCodeBracket },
-      { key: 'settings', label: 'Settings', icon: HiCog6Tooth },
+      { key: 'settings', label: 'Settings', icon: HiCog6Tooth, minRole: 'super_admin' },
     ]
   },
 ];
@@ -86,6 +90,8 @@ const PAGES = {
   observability: { title: 'Observability', component: Observability },
   guardrails: { title: 'Guardrails', component: Guardrails },
   integrations: { title: 'Integrations', component: Integrations },
+  reports: { title: 'Reports', component: Reports },
+  admin: { title: 'Admin', component: Admin },
 };
 
 export default function App() {
@@ -163,9 +169,17 @@ export default function App() {
           {NAV_ITEMS.map(section => {
             // Filter items by module status
             const visibleItems = section.items.filter(item => {
+              // Module toggle check
               const modKey = NAV_TO_MODULE[item.key];
-              if (!modKey) return true; // Not tied to a module → always visible
-              return moduleStates[modKey]?.enabled !== false; // Default: enabled
+              if (modKey && moduleStates[modKey]?.enabled === false) return false;
+              // Role-based check
+              if (item.minRole) {
+                const roleLevel = { super_admin: 4, admin: 3, editor: 2, viewer: 1 };
+                const userLevel = roleLevel[user?.role] || 0;
+                const requiredLevel = roleLevel[item.minRole] || 0;
+                if (userLevel < requiredLevel) return false;
+              }
+              return true;
             });
             if (visibleItems.length === 0) return null;
             return (

@@ -31,6 +31,13 @@ export default function CostManagement() {
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(null);
 
+    // Model Pricing CRUD state
+    const [showPricingModal, setShowPricingModal] = useState(false);
+    const [editingPricing, setEditingPricing] = useState(null);
+    const [pricingForm, setPricingForm] = useState({ modelName: '', vendor: 'OpenAI', inputPer1M: 0, outputPer1M: 0 });
+    const [savingPricing, setSavingPricing] = useState(false);
+    const [deletingPricing, setDeletingPricing] = useState(null);
+
     useEffect(() => { loadAll(); }, []);
 
     const loadAll = async () => {
@@ -126,6 +133,47 @@ export default function CostManagement() {
         const a = document.createElement('a');
         a.href = url; a.download = filename; a.click();
         URL.revokeObjectURL(url);
+    };
+
+    // ── Model Pricing CRUD handlers ──
+    const openCreatePricing = () => {
+        setEditingPricing(null);
+        setPricingForm({ modelName: '', vendor: 'OpenAI', inputPer1M: 0, outputPer1M: 0 });
+        setShowPricingModal(true);
+    };
+
+    const openEditPricing = (m) => {
+        setEditingPricing(m);
+        setPricingForm({ modelName: m.model, vendor: m.vendor, inputPer1M: m.inputPer1M, outputPer1M: m.outputPer1M });
+        setShowPricingModal(true);
+    };
+
+    const handleSavePricing = async () => {
+        setSavingPricing(true);
+        try {
+            if (editingPricing) {
+                await api.updateModelPricing(editingPricing.id, pricingForm);
+            } else {
+                await api.createModelPricing(pricingForm);
+            }
+            setShowPricingModal(false);
+            setEditingPricing(null);
+            // Reload pricing
+            const res = await api.getModelPricing();
+            setModelPricing(res.data || []);
+        } catch (err) { alert('Error: ' + err.message); }
+        finally { setSavingPricing(false); }
+    };
+
+    const handleDeletePricing = async (id) => {
+        if (!confirm('Delete this model pricing entry?')) return;
+        setDeletingPricing(id);
+        try {
+            await api.deleteModelPricing(id);
+            const res = await api.getModelPricing();
+            setModelPricing(res.data || []);
+        } catch (err) { alert('Error: ' + err.message); }
+        finally { setDeletingPricing(null); }
     };
 
     // ── Forecasting ──
@@ -467,40 +515,49 @@ export default function CostManagement() {
             {activeTab === 'pricing' && (
                 <div className="card">
                     <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h3>LLM Model Pricing Reference</h3>
-                        <button className="btn btn-secondary btn-sm" onClick={() => exportCSV(
-                            modelPricing.map(m => ({ model: m.model, input_per_1M_tokens_cents: m.inputPer1M, output_per_1M_tokens_cents: m.outputPer1M })),
-                            'model_pricing.csv'
-                        )}><HiArrowDownTray /> Export</button>
+                        <h3>LLM Model Pricing</h3>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button className="btn btn-secondary btn-sm" onClick={() => exportCSV(
+                                modelPricing.map(m => ({ model: m.model, vendor: m.vendor, input_per_1M_tokens_cents: m.inputPer1M, output_per_1M_tokens_cents: m.outputPer1M })),
+                                'model_pricing.csv'
+                            )}><HiArrowDownTray /> Export</button>
+                            <button className="btn btn-primary btn-sm" onClick={openCreatePricing}><HiPlus /> Add Model</button>
+                        </div>
                     </div>
                     <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: '0 0 16px', padding: '0 4px' }}>
-                        Costs are auto-estimated using this table when the upstream agent does not return cost data. Prices in cents per 1M tokens.
+                        Costs are auto-estimated using this table when the upstream agent does not return cost data. Prices in cents per 1M tokens. You can add, edit, or remove models.
                     </p>
                     <div style={{ overflowX: 'auto' }}>
                         <table className="data-table" style={{ width: '100%' }}>
                             <thead><tr>
-                                <th>Model</th><th style={{ textAlign: 'right' }}>Input (¢/1M tokens)</th><th style={{ textAlign: 'right' }}>Output (¢/1M tokens)</th>
-                                <th style={{ textAlign: 'right' }}>Input ($/1M)</th><th style={{ textAlign: 'right' }}>Output ($/1M)</th>
+                                <th>Model</th><th>Vendor</th><th style={{ textAlign: 'right' }}>Input (¢/1M)</th><th style={{ textAlign: 'right' }}>Output (¢/1M)</th>
+                                <th style={{ textAlign: 'right' }}>Input ($/1M)</th><th style={{ textAlign: 'right' }}>Output ($/1M)</th><th style={{ textAlign: 'center', width: 80 }}>Actions</th>
                             </tr></thead>
                             <tbody>
-                                {modelPricing.map((m, i) => {
-                                    const vendor = m.model.startsWith('gpt') || m.model.startsWith('o1') || m.model.startsWith('o3') ? 'OpenAI'
-                                        : m.model.startsWith('claude') ? 'Anthropic'
-                                            : m.model.startsWith('gemini') ? 'Google'
-                                                : 'Open Source';
-                                    return (
-                                        <tr key={i}>
-                                            <td>
-                                                <span style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: 13 }}>{m.model}</span>
-                                                <span className="badge gray" style={{ marginLeft: 8, fontSize: 10 }}>{vendor}</span>
-                                            </td>
-                                            <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{m.inputPer1M.toLocaleString()}</td>
-                                            <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{m.outputPer1M.toLocaleString()}</td>
-                                            <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>${(m.inputPer1M / 100).toFixed(2)}</td>
-                                            <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>${(m.outputPer1M / 100).toFixed(2)}</td>
-                                        </tr>
-                                    );
-                                })}
+                                {modelPricing.map((m) => (
+                                    <tr key={m.id}>
+                                        <td>
+                                            <span style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: 13 }}>{m.model}</span>
+                                        </td>
+                                        <td><span className="badge gray">{m.vendor}</span></td>
+                                        <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{m.inputPer1M.toLocaleString()}</td>
+                                        <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{m.outputPer1M.toLocaleString()}</td>
+                                        <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>${(m.inputPer1M / 100).toFixed(2)}</td>
+                                        <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>${(m.outputPer1M / 100).toFixed(2)}</td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                                                <button className="btn-icon" title="Edit" onClick={() => openEditPricing(m)} style={{ color: 'var(--text-secondary)' }}>
+                                                    <HiPencilSquare size={15} />
+                                                </button>
+                                                <button className="btn-icon" title="Delete" onClick={() => handleDeletePricing(m.id)}
+                                                    disabled={deletingPricing === m.id}
+                                                    style={{ color: deletingPricing === m.id ? 'var(--text-muted)' : 'var(--danger)' }}>
+                                                    <HiTrash size={15} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
@@ -624,6 +681,49 @@ export default function CostManagement() {
                             <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
                             <button className="btn btn-primary" onClick={handleSave} disabled={saving || !form.name}>
                                 {saving ? 'Saving...' : editingBudget ? 'Save Changes' : 'Create'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showPricingModal && (
+                <div className="modal-overlay" onClick={() => setShowPricingModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>{editingPricing ? 'Edit Model Pricing' : 'Add Model Pricing'}</h3>
+                            <button className="btn-icon" onClick={() => setShowPricingModal(false)}>✕</button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="form-group"><label>Model Name</label>
+                                <input className="form-input" value={pricingForm.modelName} onChange={e => setPricingForm({ ...pricingForm, modelName: e.target.value })}
+                                    placeholder="e.g. gpt-4o-mini" disabled={!!editingPricing} />
+                            </div>
+                            <div className="form-group"><label>Vendor</label>
+                                <select className="form-select" value={pricingForm.vendor} onChange={e => setPricingForm({ ...pricingForm, vendor: e.target.value })}>
+                                    <option value="OpenAI">OpenAI</option><option value="Anthropic">Anthropic</option>
+                                    <option value="Google">Google</option><option value="Meta">Meta</option>
+                                    <option value="Mistral">Mistral</option><option value="Cohere">Cohere</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div className="form-row">
+                                <div className="form-group"><label>Input Price (¢ per 1M tokens)</label>
+                                    <input className="form-input" type="number" step="0.01" value={pricingForm.inputPer1M}
+                                        onChange={e => setPricingForm({ ...pricingForm, inputPer1M: parseFloat(e.target.value) || 0 })} />
+                                </div>
+                                <div className="form-group"><label>Output Price (¢ per 1M tokens)</label>
+                                    <input className="form-input" type="number" step="0.01" value={pricingForm.outputPer1M}
+                                        onChange={e => setPricingForm({ ...pricingForm, outputPer1M: parseFloat(e.target.value) || 0 })} />
+                                </div>
+                            </div>
+                            <div style={{ background: 'rgba(99,102,241,0.08)', borderRadius: 8, padding: '10px 14px', marginTop: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
+                                💡 That's <strong>${(pricingForm.inputPer1M / 100).toFixed(2)}</strong>/1M input and <strong>${(pricingForm.outputPer1M / 100).toFixed(2)}</strong>/1M output tokens.
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setShowPricingModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleSavePricing} disabled={savingPricing || !pricingForm.modelName}>
+                                {savingPricing ? 'Saving...' : editingPricing ? 'Save Changes' : 'Add Model'}
                             </button>
                         </div>
                     </div>

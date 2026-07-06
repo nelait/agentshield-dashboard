@@ -166,6 +166,9 @@ const api = {
     getCostStats: () => request('GET', '/cost/stats'),
     getDailyUsage: (days = 30) => request('GET', `/cost/daily?days=${days}`),
     getModelPricing: () => request('GET', '/cost/model-pricing'),
+    createModelPricing: (data) => request('POST', '/cost/model-pricing', data),
+    updateModelPricing: (id, data) => request('PUT', `/cost/model-pricing/${id}`, data),
+    deleteModelPricing: (id) => request('DELETE', `/cost/model-pricing/${id}`),
     getBudgetAlerts: () => request('GET', '/budgets/alerts'),
     getBudgetHistory: (id) => request('GET', `/budgets/${id}/history`),
     getAllBudgetHistory: (limit = 50) => request('GET', `/budgets/history/all?limit=${limit}`),
@@ -277,6 +280,60 @@ const api = {
 
     // Observability
     getOtelHealth: () => request('GET', '/observability/health'),
+
+    // Reports
+    getReportTypes: () => request('GET', '/reports/types'),
+    generateReport: (type, params = '') => request('GET', `/reports/${type}?${params}`),
+    getReportExportUrl: (type, format = 'csv', params = '') => {
+        const base = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api/v1';
+        const token = authToken || '';
+        return `${base}/reports/${type}/export?format=${format}&${params}&token=${token}`;
+    },
+    saveReportSnapshot: (type, name, filters) => request('POST', `/reports/${type}/snapshot`, { name, filters }),
+    listReportSnapshots: (type, limit = 20) => request('GET', `/reports/snapshots/list?type=${type || ''}&limit=${limit}`),
+    getReportSnapshot: (id) => request('GET', `/reports/snapshots/${id}`),
+
+    // ============================================
+    // ADMIN — User Management
+    // ============================================
+    listAdminUsers: (params = {}) => {
+        const qs = new URLSearchParams(params).toString();
+        return request('GET', `/admin/users${qs ? '?' + qs : ''}`);
+    },
+    getAdminUser: (id) => request('GET', `/admin/users/${id}`),
+    createAdminUser: (data) => request('POST', '/admin/users', data),
+    updateAdminUser: (id, data) => request('PUT', `/admin/users/${id}`, data),
+    toggleAdminUser: (id) => request('PATCH', `/admin/users/${id}/toggle`),
+    resetAdminUserPassword: (id) => request('POST', `/admin/users/${id}/reset-password`),
+    deleteAdminUser: (id) => request('DELETE', `/admin/users/${id}`),
+    getUserLoginHistory: (id) => request('GET', `/admin/users/${id}/login-history`),
+    getUserSessions: (id) => request('GET', `/admin/users/${id}/sessions`),
+    revokeUserAllSessions: (id) => request('DELETE', `/admin/users/${id}/sessions`),
+
+    // Admin — Login History (all users)
+    getLoginHistory: (params = {}) => {
+        const qs = new URLSearchParams(params).toString();
+        return request('GET', `/admin/login-history${qs ? '?' + qs : ''}`);
+    },
+
+    // Admin — Invitations
+    createInvitation: (data) => request('POST', '/admin/invitations', data),
+    listInvitations: (params = {}) => {
+        const qs = new URLSearchParams(params).toString();
+        return request('GET', `/admin/invitations${qs ? '?' + qs : ''}`);
+    },
+    revokeInvitation: (id) => request('DELETE', `/admin/invitations/${id}`),
+
+    // Admin — Self-Service Profile
+    getProfile: () => request('GET', '/admin/profile'),
+    updateProfile: (data) => request('PUT', '/admin/profile', data),
+    changePassword: (data) => request('POST', '/admin/profile/change-password', data),
+    getMyLoginHistory: () => request('GET', '/admin/profile/login-history'),
+    getMySessions: () => request('GET', '/admin/profile/sessions'),
+    revokeMySession: (id) => request('DELETE', `/admin/profile/sessions/${id}`),
+
+    // Admin — System Stats
+    getSystemStats: () => request('GET', '/admin/system/stats'),
 };
 
 export default api;
