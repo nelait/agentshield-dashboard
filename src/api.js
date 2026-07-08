@@ -182,6 +182,8 @@ const api = {
     seedAgents: () => request('POST', '/seed-agents'),
     simulatePolicy: (data) => request('POST', '/playground/simulate', data),
     testInvokeAgent: (data) => request('POST', '/playground/test-invoke', data),
+    mcpListTools: (agentSlug, userContext) => request('POST', '/playground/mcp-tools', { agentSlug, ...(userContext || {}) }),
+    mcpCallTool: (agentSlug, toolName, toolArguments, userContext) => request('POST', '/playground/mcp-call', { agentSlug, toolName, toolArguments, ...(userContext || {}) }),
 
     // Workflow Steps
     addWorkflowStep: (slug, agentId, stepOrder, config) => request('POST', `/workflows/${slug}/steps`, { agentId, stepOrder, config }),
