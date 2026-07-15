@@ -193,14 +193,15 @@
             <tbody>
                 <tr><td>1</td><td><strong>Deploy AgentShield on GCP</strong></td><td>Production-viable architecture: Cloud Run + Cloud SQL + Firebase Hosting</td></tr>
                 <tr><td>2</td><td><strong>Register agents across protocols</strong></td><td>REST, MCP, and external (OpenAI-compatible) agents — all governed uniformly</td></tr>
-                <tr><td>3</td><td><strong>Enforce access policies</strong></td><td>ABAC policies block unauthorized users/roles in real time</td></tr>
+                <tr><td>3</td><td><strong>Enforce access policies</strong></td><td>ABAC policies block unauthorized users/roles in real time + OPA/Rego export</td></tr>
                 <tr><td>4</td><td><strong>Content guardrails</strong></td><td>PII detection, prompt injection defense, profanity filtering on agent I/O</td></tr>
                 <tr><td>5</td><td><strong>Budget enforcement</strong></td><td>Token/cost budgets at user, team, agent, and global scope — with auto-block (402)</td></tr>
                 <tr><td>6</td><td><strong>Compliance sampling</strong></td><td>Request/response capture with encryption, tamper-proof storage</td></tr>
-                <tr><td>7</td><td><strong>Agent evaluation</strong></td><td>LLM-as-Judge scoring, persona simulation, HITL review workflow</td></tr>
-                <tr><td>8</td><td><strong>Workflow orchestration</strong></td><td>Multi-agent pipelines with ordered steps and data flow</td></tr>
-                <tr><td>9</td><td><strong>Module toggles</strong></td><td>Enable/disable guardrails, compliance, cost modules without code changes</td></tr>
-                <tr><td>10</td><td><strong>Immutable audit trail</strong></td><td>Every action — allowed or denied — is logged with full context</td></tr>
+                <tr><td>7</td><td><strong>OSCAL compliance</strong></td><td>Import NIST OSCAL catalogs, export Assessment Results — auditor-ready artifacts</td></tr>
+                <tr><td>8</td><td><strong>Agent evaluation</strong></td><td>LLM-as-Judge scoring, persona simulation, HITL review workflow</td></tr>
+                <tr><td>9</td><td><strong>Workflow orchestration</strong></td><td>Multi-agent pipelines with ordered steps and data flow</td></tr>
+                <tr><td>10</td><td><strong>Module toggles</strong></td><td>Enable/disable guardrails, compliance, cost modules without code changes</td></tr>
+                <tr><td>11</td><td><strong>Immutable audit trail</strong></td><td>Every action — allowed or denied — is logged with full context</td></tr>
             </tbody>
         </table>
     </div>
@@ -754,6 +755,17 @@ app.get(<span class="str">'/mcp/sse'</span>, <span class="kw">async</span> (req,
         </ol>
         <div class="sc-expect">✅ Deny-first enforcement prevents overpermission.</div>
     </div>
+    <div class="scenario">
+        <div class="sc-title">Scenario 2.4 — OPA/Rego policy export</div>
+        <div class="sc-goal">Prove: Policies can be exported as OPA Rego for policy-as-code workflows</div>
+        <ol class="sc-steps">
+            <li>Create a policy via the dashboard (e.g., "Deny interns from finance-agent")</li>
+            <li>Navigate to the policy detail view</li>
+            <li>Call <code>GET /api/v1/policies/:id/rego</code> — receive compiled <code>.rego</code> file</li>
+            <li>Verify Rego output contains <code>package agentshield.access</code> and correct deny/allow rules</li>
+        </ol>
+        <div class="sc-expect">✅ Policy compiles to valid OPA Rego. Can be versioned in Git or deployed to standalone OPA instances.</div>
+    </div>
 </section>
 
 <section id="demo-guardrails">
@@ -882,6 +894,31 @@ app.get(<span class="str">'/mcp/sse'</span>, <span class="kw">async</span> (req,
             <li>Export filtered results</li>
         </ol>
         <div class="sc-expect">✅ Filtered results match expectations. Export produces usable audit report.</div>
+    </div>
+    <div class="scenario">
+        <div class="sc-title">Scenario 5.4 — NIST OSCAL catalog import</div>
+        <div class="sc-goal">Prove: Standard OSCAL catalogs can be imported and used for compliance checks</div>
+        <ol class="sc-steps">
+            <li>Open Dashboard → Compliance → Rules tab</li>
+            <li>Click <strong>Import OSCAL</strong> button</li>
+            <li>Upload or paste a sample OSCAL catalog JSON (e.g., SOX controls for AI agents)</li>
+            <li>Preview the groups and controls → select groups to import</li>
+            <li>Import — verify new rules appear with purple "OSCAL" badge</li>
+            <li>Verify imported rules appear alongside built-in rules in the Rules tab</li>
+        </ol>
+        <div class="sc-expect">✅ OSCAL catalog parsed and imported successfully. Rules are tagged with OSCAL source and control IDs.</div>
+    </div>
+    <div class="scenario">
+        <div class="sc-title">Scenario 5.5 — OSCAL assessment result export</div>
+        <div class="sc-goal">Prove: Compliance checks can be exported as NIST OSCAL Assessment Results</div>
+        <ol class="sc-steps">
+            <li>Run a compliance check on a config with OSCAL-imported rules</li>
+            <li>Navigate to Compliance → History tab</li>
+            <li>Select the completed check → click <strong>Export OSCAL</strong></li>
+            <li>Verify downloaded JSON contains <code>assessment-results</code> with findings, observations, and control mappings</li>
+            <li>Verify the JSON validates against OSCAL 1.1.2 schema</li>
+        </ol>
+        <div class="sc-expect">✅ Machine-readable OSCAL Assessment Result generated. Auditor-ready compliance artifact.</div>
     </div>
 </section>
 

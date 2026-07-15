@@ -1449,8 +1449,13 @@
                 </tr>
                 <tr>
                     <td><strong>Policy Engine</strong></td>
-                    <td>JS-simulated OPA</td>
-                    <td>Standalone OPA sidecar (WebAssembly-compiled policies). Deploy as K8s sidecar or ECS sidecar container.</td>
+                    <td>OPA/Rego (WASM in-process)</td>
+                    <td>Standalone OPA sidecar for dedicated policy evaluation. Deploy as K8s sidecar or ECS sidecar container. Policies auto-compile from dashboard UI.</td>
+                </tr>
+                <tr>
+                    <td><strong>Compliance Standards</strong></td>
+                    <td>NIST OSCAL import/export</td>
+                    <td>Full OSCAL lifecycle: import catalogs from NIST, FedRAMP, SOX, HIPAA. Export Assessment Results. Add OSCAL Component Definitions and Assessment Plans.</td>
                 </tr>
                 <tr>
                     <td><strong>Event Streaming</strong></td>
@@ -1494,6 +1499,7 @@
             <li><strong>Stateless backend:</strong> No local file storage or in-memory state. Horizontal scaling is trivial.</li>
             <li><strong>Standard PostgreSQL:</strong> No vendor extensions. 100% portable SQL across all managed services.</li>
             <li><strong>OpenTelemetry:</strong> Already instrumented. Plug in any OTLP-compatible collector.</li>
+            <li><strong>Open Standards:</strong> OPA/Rego (CNCF) for policies, NIST OSCAL for compliance — zero vendor lock-in, auditor-ready artifacts.</li>
         </ul>
     </div>
 </section>

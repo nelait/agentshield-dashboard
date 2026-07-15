@@ -948,13 +948,33 @@
                 </tr>
                 <tr>
                     <td class="sticky-col">NIST AI RMF / ISO 42001 mapping</td>
-                    <td class="col-shield"><span class="b b-partial">◐ Roadmap</span></td>
+                    <td class="col-shield"><span class="b b-full">✓ OSCAL</span></td>
                     <td><span class="b b-full">✓ Full</span></td>
                     <td><span class="b b-full">✓ Full</span></td>
                     <td><span class="b b-full">✓ Full</span></td>
                     <td><span class="b b-full">✓ Full</span></td>
                     <td><span class="b b-none">✗</span></td>
                     <td><span class="b b-full">✓</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">NIST OSCAL import/export</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                </tr>
+                <tr>
+                    <td class="sticky-col">OPA/Rego policy-as-code</td>
+                    <td class="col-shield"><span class="b b-full">✓ Full</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-none">✗</span></td>
+                    <td><span class="b b-partial">◐ Custom</span></td>
+                    <td><span class="b b-none">✗</span></td>
                 </tr>
                 <tr>
                     <td class="sticky-col">Real-time compliance (not point-in-time)</td>
@@ -1401,6 +1421,8 @@
                     <li><strong>Budget enforcement</strong> — Purview has no cost management</li>
                     <li><strong>Agent evaluation</strong> — LLM-as-Judge vs. no evaluation capability</li>
                     <li><strong>Compliance sampling</strong> — SOX/HIPAA-grade audit of agent I/O</li>
+                    <li><strong>NIST OSCAL</strong> — Import catalogs, export machine-readable assessment results (unique in market)</li>
+                    <li><strong>OPA/Rego</strong> — Policy-as-code with CNCF standard, WASM evaluation</li>
                     <li><strong>MCP/REST native</strong> — protocol-aware agent proxy</li>
                 </ul>
             </div>
@@ -1592,6 +1614,11 @@
         <div class="objection">
             <div class="q">"You don't have EU AI Act compliance templates."</div>
             <div class="a">Correct — and that's our roadmap. But consider this: EU AI Act says high-risk systems require <em>human oversight</em> and <em>risk mitigation measures</em>. Our HITL review, per-agent guardrails, and policy enforcement are exactly those measures. <strong>We implement the technical controls the regulation requires — we just don't generate the paperwork yet.</strong> Pair us with Credo/OneTrust for the documentation layer.</div>
+        </div>
+
+        <div class="objection">
+            <div class="q">"Do you use open standards or is this all proprietary?"</div>
+            <div class="a">We're fully committed to open standards. <strong>OPA/Rego</strong> (CNCF graduated) for policy-as-code — the same policy engine used by Kubernetes and Terraform. <strong>NIST OSCAL</strong> for compliance — import any OSCAL catalog (SOX, HIPAA, NIST 800-53, FedRAMP) and export machine-readable assessment results. No other AI governance platform supports both. <strong>Your policies are portable, your compliance artifacts are auditor-ready, and there's zero lock-in.</strong></div>
         </div>
     </div>
 </section>
