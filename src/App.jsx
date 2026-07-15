@@ -97,6 +97,14 @@ const PAGES = {
 export default function App() {
   const [user, setUser] = useState(() => {
     const stored = localStorage.getItem('agentshield_user');
+    const token = localStorage.getItem('agentshield_token');
+    // Reject demo tokens and missing tokens
+    if (!token || token === 'demo-token') {
+      localStorage.removeItem('agentshield_user');
+      localStorage.removeItem('agentshield_token');
+      localStorage.removeItem('agentshield_refresh_token');
+      return null;
+    }
     return stored ? JSON.parse(stored) : null;
   });
   const [activePage, setActivePage] = useState('dashboard');

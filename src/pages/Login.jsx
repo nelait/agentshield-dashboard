@@ -2,13 +2,17 @@ import { useState } from 'react';
 import api, { setToken, setRefreshToken } from '../api';
 
 export default function Login({ onLogin }) {
-    const [email, setEmail] = useState('admin@agentshield.local');
-    const [password, setPassword] = useState('admin123');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!email || !password) {
+            setError('Please enter both email and password');
+            return;
+        }
         setError('');
         setLoading(true);
         try {
@@ -18,16 +22,7 @@ export default function Login({ onLogin }) {
             localStorage.setItem('agentshield_user', JSON.stringify(res.data.user));
             onLogin(res.data.user);
         } catch (err) {
-            // Fallback: demo login when backend is down
-            if (email === 'admin@agentshield.local' && password === 'admin123') {
-                const mockUser = { id: 'demo', email, name: 'System Admin', role: 'super_admin' };
-                setToken('demo-token');
-                setRefreshToken('demo-refresh-token');
-                localStorage.setItem('agentshield_user', JSON.stringify(mockUser));
-                onLogin(mockUser);
-            } else {
-                setError(err.message);
-            }
+            setError(err.message || 'Invalid email or password');
             setLoading(false);
         }
     };
@@ -43,7 +38,7 @@ export default function Login({ onLogin }) {
                     <div className="form-group">
                         <label>Email</label>
                         <input className="form-input" type="email" value={email}
-                            onChange={e => setEmail(e.target.value)} placeholder="admin@agentshield.local" />
+                            onChange={e => setEmail(e.target.value)} placeholder="you@company.com" />
                     </div>
                     <div className="form-group">
                         <label>Password</label>
