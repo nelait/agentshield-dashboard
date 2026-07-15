@@ -198,9 +198,10 @@ Token usage tracking and budget enforcement.
 
 ## ComplianceService
 
-> **Source**: [`src/compliance/service.js`](file:///Users/krishnakollepara/AntiGravityProjects/agentshield/src/compliance/service.js) (677 lines)
+> **Source**: [`src/compliance/service.js`](file:///Users/krishnakollepara/AntiGravityProjects/agentshield/src/compliance/service.js) (~880 lines)  
+> **OSCAL Parser**: [`src/compliance/oscal-parser.js`](file:///Users/krishnakollepara/AntiGravityProjects/agentshield/src/compliance/oscal-parser.js)
 
-Regulatory compliance: sampling, PII detection, encryption, and framework-specific rule evaluation.
+Regulatory compliance: sampling, PII detection, encryption, framework-specific rule evaluation, and NIST OSCAL catalog import/export.
 
 | Method | Description |
 |--------|-------------|
@@ -208,12 +209,28 @@ Regulatory compliance: sampling, PII detection, encryption, and framework-specif
 | `storeSample(sampleData)` | SHA-256 hashes + AES-256-GCM encrypts request/response bodies |
 | `detectPII(text)` | Regex-based PII detection (SSN, email, phone, credit card, DOB, IP, medical terms) |
 | `_encrypt(text)` / `_decrypt(encryptedText)` | AES-256-GCM encryption/decryption |
-| `getFrameworkRules(framework)` | Loads framework-specific validation rules from DB |
+| `getFrameworkRules(framework)` | Loads framework-specific validation rules from DB (built-in + OSCAL) |
 | `generateSamples(framework, agentInfo)` | Auto-generates test inputs for compliance checking |
 | `evaluateRule(rule, samples, configData, agentReachable)` | Evaluates a single rule against sample data |
 | `invokeAgent(agent, sampleInput)` | Invokes a real agent for live compliance testing |
 | `runComplianceCheck(configId, customInputs, userId)` | Full check: load rules → generate/use samples → evaluate → store results |
 | `getChecks(configId)` / `getConfig(configId)` | Query check history |
+| **OSCAL Methods** | |
+| `importOscalCatalog(oscalJson, framework, selectedGroupIds, userId)` | Parse + import OSCAL catalog → compliance rules |
+| `listOscalCatalogs()` | List imported OSCAL catalogs |
+| `deleteOscalCatalog(catalogId)` | Delete catalog + cascade to imported rules |
+| `validateOscal(oscalJson)` | Validate OSCAL JSON structure |
+| `previewOscalCatalog(oscalJson)` | Parse without saving — returns groups/controls |
+| `exportOscalAssessmentResult(checkId)` | Export compliance check as OSCAL Assessment Result JSON |
+
+### OscalParser (Utility Module)
+
+| Method | Description |
+|--------|-------------|
+| `validate(oscalJson)` | Check for required OSCAL fields (uuid, metadata, groups/controls) |
+| `parseCatalog(oscalJson)` | Parse catalog → normalized groups + controls (recursive) |
+| `controlToRule(control, framework, catalogId)` | Convert OSCAL control → compliance_rules row format |
+| `generateAssessmentResult(checkResult, catalogMeta, systemInfo)` | Generate OSCAL Assessment Results document |
 
 ---
 

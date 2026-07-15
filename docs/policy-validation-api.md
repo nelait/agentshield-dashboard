@@ -131,6 +131,7 @@ Or use the dashboard: **Settings → 🔑 API Keys**
 ## Architecture Notes
 
 - Uses the **same `policyService.evaluate()`** as the live gateway — zero policy drift
+- **Dual-mode evaluation**: Checks both dashboard JSON rules and OPA/Rego compiled policies (deny wins)
 - Every pre-check is logged as `event_type: 'policy_precheck'` in the audit log
 - Zero side-effects — no agent invocation, no cost tracking, no compliance sampling
 - Keys are stored as SHA-256 hashes; raw key is shown only once at creation

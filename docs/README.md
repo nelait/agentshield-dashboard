@@ -23,12 +23,12 @@
 
 | Document | Description |
 |---|---|
-| [Policy Engine](features/policy-engine.md) | Policy evaluation logic, default deny, OPA/Rego compilation, playground simulation |
+| [Policy Engine](features/policy-engine.md) | Policy evaluation logic, default deny, OPA/Rego dual-mode evaluation, WASM compilation, playground simulation |
 | [Identity & Context](features/identity-and-context.md) | JWT, API Key, and A2A identity propagation for policy evaluation |
 | [Audit Logging](features/audit-logging.md) | Immutable audit trail, visualization, and archival |
 | [Lifecycle Management](features/lifecycle-management.md) | Agent registration, workflow creation, policy lifecycle |
 | [Evaluation Module](features/evaluation-module.md) | Three-layer agent evaluation, LLM-as-a-Judge, persona simulation, HITL review |
-| [Compliance Engine](features/compliance-engine.md) | SOX/HIPAA/GDPR/PCI-DSS compliance, PII detection, encrypted sampling |
+| [Compliance Engine](features/compliance-engine.md) | SOX/HIPAA/GDPR/PCI-DSS compliance, PII detection, encrypted sampling, **NIST OSCAL import/export** |
 | [Cost Management](features/cost-management.md) | Token/cost budgets, usage tracking, period auto-reset |
 | [Cost Management — Use Cases](features/cost-management-use-cases.md) | Use case scenarios for budget enforcement, overage handling, and analytics |
 | [Cost Management — Test Cases](features/cost-management-test-cases.md) | Comprehensive test plan for cost recording, pricing, budgets, and UI |

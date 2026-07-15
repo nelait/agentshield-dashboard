@@ -149,6 +149,7 @@ Returns parallel-fetched stats from all subsystems for the dashboard overview ca
 | `POST` | `/policies` | ✅ | Editor | Create a new policy |
 | `PUT` | `/policies/:id` | ✅ | Editor | Update policy fields |
 | `DELETE` | `/policies/:id` | ✅ | Admin | Delete a policy |
+| `GET` | `/policies/:id/rego` | ✅ | Any | Export policy as OPA Rego format |
 
 ### Create Policy — Request Body
 
@@ -201,6 +202,17 @@ Returns parallel-fetched stats from all subsystems for the dashboard overview ca
 | `PATCH` | `/compliance/rules/:id/toggle` | ✅ | Editor | Toggle rule enabled/disabled |
 | `DELETE` | `/compliance/rules/:id` | ✅ | Admin | Delete a custom rule |
 | `POST` | `/compliance/rules/upload` | ✅ | Any | Upload CSV/XLSX of rules |
+
+### OSCAL (NIST Open Standard)
+
+| Method | Path | Auth | Role | Description |
+|--------|------|------|------|-------------|
+| `POST` | `/compliance/oscal/validate` | ✅ | Editor | Validate OSCAL JSON structure |
+| `POST` | `/compliance/oscal/preview` | ✅ | Editor | Preview catalog groups/controls without saving |
+| `POST` | `/compliance/oscal/import` | ✅ | Admin | Import OSCAL catalog → compliance rules |
+| `GET` | `/compliance/oscal/catalogs` | ✅ | Any | List imported OSCAL catalogs |
+| `DELETE` | `/compliance/oscal/catalogs/:id` | ✅ | Admin | Delete catalog + cascade rules |
+| `GET` | `/compliance/checks/:id/oscal` | ✅ | Any | Export check as OSCAL Assessment Result |
 
 ---
 

@@ -207,8 +207,34 @@ CREATE RULE audit_no_delete AS ON DELETE TO audit_log DO INSTEAD NOTHING;
 | `is_enabled` | BOOLEAN | Active flag |
 | `is_builtin` | BOOLEAN | `true` for seeded rules (cannot be deleted) |
 | `evaluation_config` | JSONB | Custom regex patterns, thresholds, sample data |
+| `oscal_catalog_id` | UUID FK → oscal_catalogs | Source OSCAL catalog (NULL for built-in/custom) |
+| `oscal_control_id` | VARCHAR(100) | Original OSCAL control ID (e.g., `SOX-AI-DI-01`) |
+| `oscal_statement` | TEXT | OSCAL control statement prose |
+| `oscal_guidance` | TEXT | OSCAL control guidance prose |
 
-**Seeded rules:** 20 built-in rules (5 per framework: SOX, HIPAA, GDPR, PCI-DSS)
+**Seeded rules:** 20 built-in rules (5 per framework: SOX, HIPAA, GDPR, PCI-DSS)  
+**OSCAL rules:** Imported from NIST OSCAL catalogs via the dashboard
+
+---
+
+## Migration 015: OSCAL Catalogs
+
+### `oscal_catalogs`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID PK | Primary key |
+| `title` | VARCHAR(500) | Catalog title (e.g., "SOX Compliance Controls for AI Agents") |
+| `version` | VARCHAR(50) | Catalog version |
+| `oscal_version` | VARCHAR(20) | OSCAL spec version (e.g., `1.1.2`) |
+| `framework` | VARCHAR(30) | Target framework |
+| `source_json` | JSONB | Complete original OSCAL catalog JSON |
+| `total_controls` | INTEGER | Total controls in catalog |
+| `imported_controls` | INTEGER | Number of controls imported |
+| `imported_by` | UUID FK → users | User who performed the import |
+| `created_at` | TIMESTAMPTZ | Import timestamp |
+
+**Cascade behavior:** Deleting an `oscal_catalogs` row deletes all associated `compliance_rules`.
 
 ---
 
