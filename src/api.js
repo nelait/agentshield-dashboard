@@ -148,6 +148,12 @@ const api = {
     updatePolicy: (id, data) => request('PUT', `/policies/${id}`, data),
     deletePolicy: (id) => request('DELETE', `/policies/${id}`),
 
+    // Rego / OPA
+    regoStatus: () => request('GET', '/policies/rego/status'),
+    validateRego: (source) => request('POST', '/policies/rego/validate', { source }),
+    importRego: (name, source, priority) => request('POST', '/policies/rego/import', { name, source, priority }),
+    exportRego: (id) => request('GET', `/policies/${id}/rego`),
+
     // Compliance
     listComplianceConfigs: () => request('GET', '/compliance/configs'),
     createComplianceConfig: (data) => request('POST', '/compliance/configs', data),
