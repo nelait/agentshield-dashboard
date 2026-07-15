@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { HiPlus, HiExclamationTriangle, HiDocumentText, HiPlay, HiArrowUpTray, HiChevronDown, HiChevronUp, HiCheckCircle, HiXCircle, HiExclamationCircle, HiPencil, HiTrash, HiShieldCheck, HiEye, HiMagnifyingGlass, HiClock } from 'react-icons/hi2';
+import { HiPlus, HiExclamationTriangle, HiDocumentText, HiPlay, HiArrowUpTray, HiArrowDownTray, HiChevronDown, HiChevronUp, HiCheckCircle, HiXCircle, HiExclamationCircle, HiPencil, HiTrash, HiShieldCheck, HiEye, HiMagnifyingGlass, HiClock, HiGlobeAlt } from 'react-icons/hi2';
 import api from '../api';
 
 const RULE_FRAMEWORK_TABS = [
@@ -51,8 +51,18 @@ export default function Compliance() {
     const [uploadingRules, setUploadingRules] = useState(false);
     const [uploadStatus, setUploadStatus] = useState(null);
 
-    useEffect(() => { loadAll(); }, []);
-    useEffect(() => { if (mainTab === 'rules') loadRules(); }, [ruleFramework, mainTab]);
+    // ===== OSCAL STATE =====
+    const [showOscalModal, setShowOscalModal] = useState(false);
+    const [oscalJson, setOscalJson] = useState('');
+    const [oscalFramework, setOscalFramework] = useState('sox');
+    const [oscalPreview, setOscalPreview] = useState(null);
+    const [oscalSelectedGroups, setOscalSelectedGroups] = useState([]);
+    const [oscalImporting, setOscalImporting] = useState(false);
+    const [oscalCatalogs, setOscalCatalogs] = useState([]);
+    const oscalFileRef = useRef(null);
+
+    useEffect(() => { loadAll(); loadOscalCatalogs(); }, []);
+    useEffect(() => { if (mainTab === 'rules') { loadRules(); loadOscalCatalogs(); } }, [ruleFramework, mainTab]);
 
     const loadAll = async () => {
         setLoading(true);
@@ -74,6 +84,69 @@ export default function Compliance() {
             setRules(res.data || []);
         } catch (err) { console.error(err); }
         finally { setRulesLoading(false); }
+    };
+
+    const loadOscalCatalogs = async () => {
+        try {
+            const res = await api.listOscalCatalogs();
+            setOscalCatalogs(res.data || []);
+        } catch { /* non-critical */ }
+    };
+
+    const handleOscalPreview = async () => {
+        try {
+            const parsed = JSON.parse(oscalJson);
+            const res = await api.previewOscal(parsed);
+            if (res.data?.valid) {
+                setOscalPreview(res.data);
+                setOscalSelectedGroups(res.data.groups?.map(g => g.id) || []);
+            } else {
+                alert('Invalid OSCAL: ' + (res.data?.errors?.join('; ') || 'Unknown error'));
+            }
+        } catch (err) { alert('JSON parse error: ' + err.message); }
+    };
+
+    const handleOscalImport = async () => {
+        if (!oscalPreview) return;
+        setOscalImporting(true);
+        try {
+            const parsed = JSON.parse(oscalJson);
+            const res = await api.importOscal(parsed, oscalFramework, oscalSelectedGroups);
+            alert(`Imported ${res.data?.importedControls || 0} controls from "${res.data?.title}"`);
+            setShowOscalModal(false);
+            setOscalJson(''); setOscalPreview(null); setOscalSelectedGroups([]);
+            await loadRules();
+            await loadOscalCatalogs();
+        } catch (err) { alert('Import error: ' + err.message); }
+        finally { setOscalImporting(false); }
+    };
+
+    const handleDeleteCatalog = async (id) => {
+        if (!confirm('Delete this OSCAL catalog and all its imported rules?')) return;
+        try {
+            await api.deleteOscalCatalog(id);
+            await loadRules();
+            await loadOscalCatalogs();
+        } catch (err) { alert('Delete error: ' + err.message); }
+    };
+
+    const handleExportOscal = async (checkId) => {
+        try {
+            const res = await api.exportOscalResult(checkId);
+            const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `oscal-assessment-result-${checkId.slice(0, 8)}.json`; a.click();
+            URL.revokeObjectURL(url);
+        } catch (err) { alert('Export error: ' + err.message); }
+    };
+
+    const handleOscalFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => setOscalJson(ev.target.result);
+        reader.readAsText(file);
     };
 
     // ===== CONFIG HANDLERS =====
@@ -738,9 +811,14 @@ export default function Compliance() {
                                 <h3>
                                     Run Details — {new Date(selectedRunData.started_at).toLocaleString()}
                                 </h3>
-                                <button className="btn btn-secondary btn-sm" onClick={() => { setSelectedRunId(''); setSelectedRunData(null); }}>
-                                    ← Back to runs
-                                </button>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <button className="btn btn-secondary btn-sm" onClick={() => handleExportOscal(selectedRunData.id)} title="Export as OSCAL Assessment Result">
+                                        <HiArrowDownTray /> Export OSCAL
+                                    </button>
+                                    <button className="btn btn-secondary btn-sm" onClick={() => { setSelectedRunId(''); setSelectedRunData(null); }}>
+                                        ← Back to runs
+                                    </button>
+                                </div>
                             </div>
                             <div style={{ padding: '16px 20px' }}>
                                 {renderResultsPanel(selectedRunData)}
@@ -802,6 +880,9 @@ export default function Compliance() {
                                     <button className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()} disabled={uploadingRules}>
                                         <HiArrowUpTray /> {uploadingRules ? 'Uploading...' : 'Upload CSV/XLS'}
                                     </button>
+                                    <button className="btn btn-secondary btn-sm" onClick={() => { setShowOscalModal(true); setOscalJson(''); setOscalPreview(null); setOscalSelectedGroups([]); }}>
+                                        <HiGlobeAlt /> Import OSCAL
+                                    </button>
                                     <button className="btn btn-primary btn-sm" onClick={() => { setEditingRule(null); setRuleForm({ name: '', description: '', category: '', severity: 'medium', passInput: '', passOutput: '', failInput: '', failOutput: '' }); setShowRuleModal(true); }}>
                                         <HiPlus /> Add Rule
                                     </button>
@@ -847,7 +928,11 @@ export default function Compliance() {
                                                     </div>
                                                     <div style={{ width: 120, fontSize: 13, color: 'var(--text-secondary)' }}>{r.category}</div>
                                                     <div style={{ width: 80 }}>{getSeverityBadge(r.severity)}</div>
-                                                    <div style={{ width: 70 }}>{r.is_builtin ? <span className="badge blue">Built-in</span> : <span className="badge green">Custom</span>}</div>
+                                                    <div style={{ width: 70 }}>
+                                                        {r.oscal_catalog_id ? <span className="badge" style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa', fontSize: 10 }}>OSCAL</span>
+                                                            : r.is_builtin ? <span className="badge blue">Built-in</span>
+                                                            : <span className="badge green">Custom</span>}
+                                                    </div>
                                                     <div style={{ width: 60 }}>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleToggleRule(r); }}
@@ -926,6 +1011,127 @@ export default function Compliance() {
                             </div>
                         </div>
                     )}
+
+                    {/* OSCAL Imported Catalogs */}
+                    {oscalCatalogs.length > 0 && (
+                        <div className="card" style={{ marginTop: 16 }}>
+                            <div className="card-header">
+                                <h3><HiGlobeAlt style={{ marginRight: 8 }} />Imported OSCAL Catalogs</h3>
+                            </div>
+                            <div style={{ display: 'flex', padding: '10px 16px', borderBottom: '1px solid var(--border-color)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+                                <div style={{ flex: 1 }}>Catalog</div>
+                                <div style={{ width: 100 }}>Framework</div>
+                                <div style={{ width: 80 }}>Controls</div>
+                                <div style={{ width: 120 }}>Imported</div>
+                                <div style={{ width: 60 }}>Actions</div>
+                            </div>
+                            {oscalCatalogs.map(cat => (
+                                <div key={cat.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid var(--border-color)' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 600, fontSize: 14 }}>{cat.title}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>v{cat.version} • UUID: {cat.catalog_uuid?.slice(0, 8)}...</div>
+                                    </div>
+                                    <div style={{ width: 100 }}>
+                                        <span className="badge blue">{(cat.framework || '').toUpperCase()}</span>
+                                    </div>
+                                    <div style={{ width: 80, fontSize: 13 }}>{cat.total_controls}</div>
+                                    <div style={{ width: 120, fontSize: 12, color: 'var(--text-muted)' }}>
+                                        {cat.imported_controls} controls • {new Date(cat.created_at).toLocaleDateString()}
+                                    </div>
+                                    <div style={{ width: 60 }}>
+                                        <button className="btn-icon" onClick={() => handleDeleteCatalog(cat.id)} title="Delete catalog">
+                                            <HiTrash style={{ color: 'var(--color-error)' }} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* OSCAL Import Modal */}
+            {showOscalModal && (
+                <div className="modal-overlay" onClick={() => setShowOscalModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 680 }}>
+                        <div className="modal-header">
+                            <h3><HiGlobeAlt style={{ marginRight: 8 }} /> Import OSCAL Catalog</h3>
+                            <button className="btn-icon" onClick={() => setShowOscalModal(false)}>✕</button>
+                        </div>
+                        <div className="modal-body" style={{ padding: 20 }}>
+                            <div style={{ marginBottom: 16 }}>
+                                <label style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, display: 'block' }}>Target Framework</label>
+                                <select className="form-select" value={oscalFramework} onChange={e => setOscalFramework(e.target.value)}>
+                                    <option value="sox">SOX</option>
+                                    <option value="hipaa">HIPAA</option>
+                                    <option value="gdpr">GDPR</option>
+                                    <option value="pci_dss">PCI-DSS</option>
+                                    <option value="nist_800_53">NIST 800-53</option>
+                                    <option value="fedramp">FedRAMP</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
+                            <div style={{ marginBottom: 16 }}>
+                                <label style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, display: 'block' }}>OSCAL Catalog JSON</label>
+                                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                                    <input type="file" ref={oscalFileRef} accept=".json" style={{ display: 'none' }} onChange={handleOscalFileUpload} />
+                                    <button className="btn btn-secondary btn-sm" onClick={() => oscalFileRef.current?.click()}>
+                                        <HiArrowUpTray /> Upload .json
+                                    </button>
+                                    <button className="btn btn-primary btn-sm" onClick={handleOscalPreview} disabled={!oscalJson.trim()}>
+                                        Preview Catalog
+                                    </button>
+                                </div>
+                                <textarea
+                                    className="form-textarea"
+                                    value={oscalJson}
+                                    onChange={e => { setOscalJson(e.target.value); setOscalPreview(null); }}
+                                    placeholder='Paste OSCAL catalog JSON here...'
+                                    style={{ height: 160, fontFamily: 'monospace', fontSize: 12, width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 8, padding: 10, color: 'var(--text-primary)', resize: 'vertical' }}
+                                />
+                            </div>
+
+                            {/* Preview Results */}
+                            {oscalPreview && (
+                                <div style={{ background: 'rgba(139,92,246,0.05)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                                        <div>
+                                            <div style={{ fontWeight: 700, fontSize: 16 }}>{oscalPreview.title}</div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>v{oscalPreview.version} • {oscalPreview.totalControls} total controls</div>
+                                        </div>
+                                        <span className="badge" style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>OSCAL</span>
+                                    </div>
+                                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Select Control Groups to Import:</div>
+                                    {oscalPreview.groups?.map(g => (
+                                        <label key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', cursor: 'pointer', fontSize: 13 }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={oscalSelectedGroups.includes(g.id)}
+                                                onChange={e => {
+                                                    setOscalSelectedGroups(prev => e.target.checked
+                                                        ? [...prev, g.id]
+                                                        : prev.filter(id => id !== g.id)
+                                                    );
+                                                }}
+                                            />
+                                            <span style={{ fontWeight: 600 }}>{g.title}</span>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>({g.controlCount} controls)</span>
+                                        </label>
+                                    ))}
+                                    <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+                                        {oscalSelectedGroups.length} of {oscalPreview.groups?.length || 0} groups selected •{' '}
+                                        ~{oscalPreview.groups?.filter(g => oscalSelectedGroups.includes(g.id)).reduce((sum, g) => sum + g.controlCount, 0)} controls will be imported
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setShowOscalModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleOscalImport} disabled={!oscalPreview || oscalSelectedGroups.length === 0 || oscalImporting}>
+                                {oscalImporting ? 'Importing...' : `Import ${oscalSelectedGroups.length} Group(s)`}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 

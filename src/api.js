@@ -163,6 +163,14 @@ const api = {
     uploadComplianceSamples: (configId, samples) => request('POST', `/compliance/configs/${configId}/upload-samples`, { samples }),
     getComplianceChecks: (configId) => request('GET', `/compliance/configs/${configId}/checks`),
 
+    // OSCAL
+    validateOscal: (catalog) => request('POST', '/compliance/oscal/validate', catalog),
+    previewOscal: (catalog) => request('POST', '/compliance/oscal/preview', catalog),
+    importOscal: (catalog, framework, selectedGroups) => request('POST', '/compliance/oscal/import', { catalog, framework, selectedGroups }),
+    listOscalCatalogs: () => request('GET', '/compliance/oscal/catalogs'),
+    deleteOscalCatalog: (id) => request('DELETE', `/compliance/oscal/catalogs/${id}`),
+    exportOscalResult: (checkId) => request('GET', `/compliance/checks/${checkId}/oscal`),
+
     // Budgets + Cost
     listBudgets: () => request('GET', '/budgets'),
     createBudget: (data) => request('POST', '/budgets', data),
