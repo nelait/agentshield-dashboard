@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Sure — Guardrails Test Cases</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b0d11;
+            --surface: #14171e;
+            --surface-2: #1c2029;
+            --surface-3: #242833;
+            --border: #2a2e3d;
+            --border-light: #363b4e;
+            --text: #e4e7ed;
+            --text-muted: #8990a5;
+            --text-dim: #5c6378;
+            --accent: #6c8cff;
+            --accent-light: #8ba6ff;
+            --accent-glow: rgba(108,140,255,0.12);
+            --green: #34d399;
+            --green-bg: rgba(52,211,153,0.08);
+            --green-border: rgba(52,211,153,0.25);
+            --amber: #fbbf24;
+            --amber-bg: rgba(251,191,36,0.08);
+            --amber-border: rgba(251,191,36,0.25);
+            --red: #f87171;
+            --red-bg: rgba(248,113,113,0.08);
+            --red-border: rgba(248,113,113,0.25);
+            --blue: #60a5fa;
+            --blue-bg: rgba(96,165,250,0.08);
+            --purple: #a78bfa;
+            --purple-bg: rgba(167,139,250,0.08);
+            --cyan: #22d3ee;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.72;
+        }
+
+        .hero {
+            position: relative;
+            padding: 80px 40px 60px;
+            text-align: center;
+            overflow: hidden;
+            border-bottom: 1px solid var(--border);
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 30% 20%, rgba(108,140,255,0.08), transparent),
+                radial-gradient(ellipse 40% 40% at 70% 70%, rgba(167,139,250,0.06), transparent);
+            pointer-events: none;
+        }
+        .hero .badge-doc {
+            display: inline-block;
+            padding: 5px 16px;
+            background: var(--accent-glow);
+            border: 1px solid rgba(108,140,255,0.3);
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--accent-light);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 18px;
+            position: relative;
+        }
+        .hero h1 {
+            font-size: 2.6rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 30%, var(--accent-light) 70%, var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            line-height: 1.2;
+        }
+        .hero .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-top: 14px;
+            position: relative;
+            max-width: 720px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .hero .meta-row {
+            margin-top: 24px;
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            position: relative;
+        }
+        .hero .meta-row span {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            background: var(--surface-2);
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 48px 32px 100px;
+        }
+
+        /* ───── SUMMARY CARDS ───── */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            margin-bottom: 48px;
+        }
+        .summary-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px 20px;
+            text-align: center;
+        }
+        .summary-card .num {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--accent);
+        }
+        .summary-card .label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        .summary-card.green .num { color: var(--green); }
+        .summary-card.amber .num { color: var(--amber); }
+
+        /* ───── TOC ───── */
+        .toc {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 28px 34px;
+            margin-bottom: 56px;
+        }
+        .toc-title {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-dim);
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .toc ol {
+            padding-left: 20px;
+            columns: 2;
+            column-gap: 32px;
+        }
+        .toc li { margin-bottom: 7px; break-inside: avoid; }
+        .toc a { color: var(--accent); text-decoration: none; font-size: 0.88rem; }
+        .toc a:hover { text-decoration: underline; }
+        .toc .yaml-tag {
+            font-size: 0.62rem;
+            background: var(--blue-bg);
+            color: var(--blue);
+            padding: 1px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+            font-weight: 700;
+            vertical-align: middle;
+        }
+
+        /* ───── SECTIONS ───── */
+        section { margin-bottom: 56px; }
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        h2 .num { color: var(--accent); margin-right: 8px; }
+
+        /* ───── TEST CASE CARD ───── */
+        .tc-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            transition: border-color 0.2s;
+        }
+        .tc-card:hover { border-color: var(--border-light); }
+        .tc-card.yaml { border-left: 3px solid var(--accent); }
+        .tc-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .tc-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--accent);
+            background: var(--accent-glow);
+            padding: 2px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(108,140,255,0.2);
+        }
+        .tc-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        .tc-priority {
+            margin-left: auto;
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+        .tc-priority.p0 { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+        .tc-priority.p1 { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+
+        .tc-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .tc-table td {
+            padding: 7px 12px;
+            border-bottom: 1px solid rgba(42,46,61,0.5);
+            vertical-align: top;
+        }
+        .tc-table td:first-child {
+            font-weight: 700;
+            color: var(--text-muted);
+            width: 100px;
+            white-space: nowrap;
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .tc-table tr:last-child td { border-bottom: none; }
+        .tc-table code {
+            background: var(--surface-3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.76rem;
+            color: var(--purple);
+        }
+
+        /* ───── SUMMARY TABLE ───── */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 16px 0 28px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        table.summary {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.84rem;
+        }
+        table.summary thead th {
+            background: var(--surface-2);
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.7px;
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+        }
+        table.summary thead th:first-child { border-radius: 12px 0 0 0; }
+        table.summary thead th:last-child { border-radius: 0 12px 0 0; }
+        table.summary tbody td {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        table.summary tbody tr:hover { background: rgba(108,140,255,0.03); }
+        table.summary tbody tr:last-child { font-weight: 700; }
+        table.summary tbody tr:last-child td { border-top: 2px solid var(--border); color: var(--accent); }
+        table.summary .yaml-row td { background: var(--accent-glow); }
+
+        /* ───── SECTION DIVIDER ───── */
+        .section-divider {
+            text-align: center;
+            margin: 60px 0 48px;
+            position: relative;
+        }
+        .section-divider::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 1px;
+            background: var(--border);
+        }
+        .section-divider span {
+            position: relative;
+            background: var(--bg);
+            padding: 0 20px;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        /* ───── BADGES ───── */
+        .b {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .b-blue { background: var(--blue-bg); color: var(--blue); border: 1px solid rgba(96,165,250,0.25); }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════ HERO ═══════════ -->
+<div class="hero">
+    <div class="badge-doc">🧪 Test Cases</div>
+    <h1>Guardrails Module — Test Cases</h1>
+    <p class="subtitle">148 test cases across 23 categories covering rule evaluators, CRUD, gateway enforcement, YAML import/export, and frontend UI.</p>
+    <div class="meta-row">
+        <span>🛡️ AI Sure Governance Firewall</span>
+        <span>📅 July 2026</span>
+        <span>🏷️ v0.1.0 — Phase 3</span>
+        <span>🧪 148 Total Tests</span>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- ═══════════ SUMMARY CARDS ═══════════ -->
+    <div class="summary-grid">
+        <div class="summary-card"><div class="num">148</div><div class="label">Total Tests</div></div>
+        <div class="summary-card green"><div class="num">87</div><div class="label">P0 (Critical)</div></div>
+        <div class="summary-card amber"><div class="num">61</div><div class="label">P1 (Important)</div></div>
+        <div class="summary-card"><div class="num">23</div><div class="label">Categories</div></div>
+        <div class="summary-card"><div class="num">49</div><div class="label">YAML Tests</div></div>
+    </div>
+
+    <!-- ═══════════ TOC ═══════════ -->
+    <div class="toc">
+        <div class="toc-title">Test Categories</div>
+        <ol>
+            <li><a href="#s1">Content Filter Rule</a></li>
+            <li><a href="#s2">PII Shield Rule</a></li>
+            <li><a href="#s3">Prompt Injection Rule</a></li>
+            <li><a href="#s4">Topic Boundary Rule</a></li>
+            <li><a href="#s5">Token Limit Rule</a></li>
+            <li><a href="#s6">Custom Regex Rule</a></li>
+            <li><a href="#s7">Output Format Rule</a></li>
+            <li><a href="#s8">Profile CRUD</a></li>
+            <li><a href="#s9">Rule CRUD</a></li>
+            <li><a href="#s10">Agent Assignment</a></li>
+            <li><a href="#s11">Gateway Middleware</a></li>
+            <li><a href="#s12">Test Runner</a></li>
+            <li><a href="#s13">Payload Parsing</a></li>
+            <li><a href="#s14">Stats</a></li>
+            <li><a href="#s15">API Authorization</a></li>
+            <li><a href="#s16">Frontend UI</a></li>
+            <li><a href="#s17">Database Migration</a></li>
+            <li><a href="#s18">YAML Parser — Validation</a> <span class="yaml-tag">YAML</span></li>
+            <li><a href="#s19">YAML Parser — Conversion</a> <span class="yaml-tag">YAML</span></li>
+            <li><a href="#s20">YAML API — Import</a> <span class="yaml-tag">YAML</span></li>
+            <li><a href="#s21">YAML API — Export</a> <span class="yaml-tag">YAML</span></li>
+            <li><a href="#s22">YAML API — Preview</a> <span class="yaml-tag">YAML</span></li>
+            <li><a href="#s23">YAML UI — Frontend</a> <span class="yaml-tag">YAML</span></li>
+        </ol>
+    </div>
+
+    <!-- ═══════════ SECTION 18: YAML Parser Validation ═══════════ -->
+    <div class="section-divider"><span>Phase 3 — YAML Test Cases</span></div>
+
+    <section id="s18">
+        <h2><span class="num">18.</span>YAML Parser — Validation <span class="b b-blue">Phase 3</span></h2>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-18.1</span><span class="tc-title">Valid minimal YAML</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Input</td><td><code>guardrail: { name: Test, rules: [{ name: R1, type: content-filter, severity: high }] }</code></td></tr><tr><td>Expected</td><td><code>valid: true</code>, <code>errors: []</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-18.2</span><span class="tc-title">Missing top-level "guardrail" key</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Input</td><td><code>name: Test, rules: []</code></td></tr><tr><td>Expected</td><td><code>valid: false</code>, error: <code>Missing required top-level key: "guardrail"</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-18.3</span><span class="tc-title">Missing profile name</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Input</td><td>YAML with <code>guardrail.rules</code> but no <code>guardrail.name</code></td></tr><tr><td>Expected</td><td><code>valid: false</code>, error contains <code>guardrail.name is required</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-18.4</span><span class="tc-title">Invalid mode</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>Input</td><td>YAML with <code>mode: destroy</code></td></tr><tr><td>Expected</td><td><code>valid: false</code>, error: <code>mode must be one of: block, log_only</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-18.5</span><span class="tc-title">Invalid rule type</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Input</td><td>Rule with <code>type: invalid-type</code></td></tr><tr><td>Expected</td><td><code>valid: false</code>, error contains <code>invalid type "invalid-type"</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-18.6</span><span class="tc-title">Invalid severity</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>Input</td><td>Rule with <code>severity: extreme</code></td></tr><tr><td>Expected</td><td><code>valid: false</code>, error contains <code>invalid severity "extreme"</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-18.7</span><span class="tc-title">Empty rules array</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Input</td><td>YAML with <code>rules: []</code></td></tr><tr><td>Expected</td><td><code>valid: false</code>, error: <code>rules must be a non-empty array</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-18.8</span><span class="tc-title">Type alias — hyphenated format</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Input</td><td>Rule with <code>type: pii-shield</code></td></tr><tr><td>Expected</td><td>Parsed: <code>rule_type: "pii_shield"</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-18.9</span><span class="tc-title">Type alias — underscore format</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>Input</td><td>Rule with <code>type: prompt_injection</code></td></tr><tr><td>Expected</td><td>Parsed: <code>rule_type: "prompt_injection"</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-18.10</span><span class="tc-title">Type alias — shorthand</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>Input</td><td>Rule with <code>type: pii</code></td></tr><tr><td>Expected</td><td>Parsed: <code>rule_type: "pii_shield"</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-18.11</span><span class="tc-title">Malformed YAML syntax</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Input</td><td>Broken YAML indentation</td></tr><tr><td>Expected</td><td><code>valid: false</code>, error starts with <code>YAML parse error:</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-18.12</span><span class="tc-title">Exception — missing agent field</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>Input</td><td>Exception with <code>skip_rules</code> but no <code>agent</code> field</td></tr><tr><td>Expected</td><td><code>valid: false</code>, error: <code>must have an "agent" field</code></td></tr></table>
+        </div>
+    </section>
+
+    <!-- ═══════════ SECTION 19: YAML Parser Conversion ═══════════ -->
+    <section id="s19">
+        <h2><span class="num">19.</span>YAML Parser — Conversion <span class="b b-blue">Phase 3</span></h2>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-19.1</span><span class="tc-title">Config flattening — content_filter keywords</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>DB Rule</td><td><code>{ rule_type: "content_filter", config: { keywords: ["secret", "password"] } }</code></td></tr><tr><td>Expected</td><td>YAML rule has top-level <code>keywords: ["secret", "password"]</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-19.2</span><span class="tc-title">Config flattening — token_limit</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>DB Rule</td><td><code>{ rule_type: "token_limit", config: { maxTokens: 4096 } }</code></td></tr><tr><td>Expected</td><td>YAML rule has <code>max_tokens: 4096</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-19.3</span><span class="tc-title">Config flattening — topic_boundary</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>DB Rule</td><td><code>{ rule_type: "topic_boundary", config: { allowedTopics: ["finance"], blockedTopics: ["politics"] } }</code></td></tr><tr><td>Expected</td><td>YAML has <code>allowed_topics</code> and <code>blocked_topics</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-19.4</span><span class="tc-title">Config building — keywords to DB config</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>YAML Rule</td><td><code>{ type: "content-filter", keywords: ["bad", "words"] }</code></td></tr><tr><td>Expected</td><td>DB: <code>{ config: { keywords: ["bad", "words"] } }</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-19.5</span><span class="tc-title">Config building — pattern to custom_regex</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>YAML Rule</td><td><code>{ type: "custom-regex", pattern: "\\b\\d{3}-\\d{2}-\\d{4}\\b" }</code></td></tr><tr><td>Expected</td><td>DB: <code>{ config: { patterns: [{ pattern: ..., flags: "gi" }] } }</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-19.6</span><span class="tc-title">Config building — explicit config merge</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>YAML Rule</td><td><code>{ type: "pii-shield", config: { customField: true } }</code></td></tr><tr><td>Expected</td><td>DB: <code>{ config: { customField: true } }</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-19.7</span><span class="tc-title">Slugify for YAML IDs</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>Input</td><td>Rule name: <code>"PII &amp; Safety Shield (v2)"</code></td></tr><tr><td>Expected</td><td>YAML ID: <code>"pii-safety-shield-v2"</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-19.8</span><span class="tc-title">Type inference from fields</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>YAML Rule</td><td><code>{ name: "R1", keywords: ["test"] }</code> (no explicit type)</td></tr><tr><td>Expected</td><td>DB: <code>rule_type: "content_filter"</code> (inferred from keywords)</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-19.9</span><span class="tc-title">Disabled rule preservation</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>YAML Rule</td><td><code>{ name: "R1", type: "pii-shield", enabled: false }</code></td></tr><tr><td>Expected</td><td>DB: <code>is_enabled: false</code></td></tr></table>
+        </div>
+    </section>
+
+    <!-- ═══════════ SECTION 20: YAML API Import ═══════════ -->
+    <section id="s20">
+        <h2><span class="num">20.</span>YAML API — Import <span class="b b-blue">Phase 3</span></h2>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-20.1</span><span class="tc-title">Successful import</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td><code>POST /guardrails/import-yaml</code> with valid YAML containing 2 rules</td></tr><tr><td>Expected</td><td>201 response, profile created, 2 rules created</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-20.2</span><span class="tc-title">Duplicate name — 409 conflict</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Create profile "Test" → import YAML with <code>name: Test</code></td></tr><tr><td>Expected</td><td>409 response, error: <code>already exists</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-20.3</span><span class="tc-title">Invalid YAML — 400 error</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td><code>POST /guardrails/import-yaml</code> with <code>{ yaml: "not: valid: yaml: {{" }</code></td></tr><tr><td>Expected</td><td>400 response with validation errors</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-20.4</span><span class="tc-title">Missing yaml field — 400 error</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td><code>POST /guardrails/import-yaml</code> with <code>{}</code></td></tr><tr><td>Expected</td><td>400, error: <code>YAML string is required in the "yaml" field</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-20.5</span><span class="tc-title">Requires editor role</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Login as viewer → <code>POST /guardrails/import-yaml</code></td></tr><tr><td>Expected</td><td>403 response</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-20.6</span><span class="tc-title">Preserves rule sort order</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Import YAML with 3 rules (A, B, C) → fetch profile</td></tr><tr><td>Expected</td><td>Rules have <code>sort_order</code> 0, 1, 2 matching YAML order</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-20.7</span><span class="tc-title">Import with exceptions</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Import YAML with <code>exceptions: [{ agent: "hr-bot", skip_rules: ["pii-email"] }]</code></td></tr><tr><td>Expected</td><td>Response includes <code>exceptions</code> array</td></tr></table>
+        </div>
+    </section>
+
+    <!-- ═══════════ SECTION 21: YAML API Export ═══════════ -->
+    <section id="s21">
+        <h2><span class="num">21.</span>YAML API — Export <span class="b b-blue">Phase 3</span></h2>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-21.1</span><span class="tc-title">Successful export</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Create profile with 2 rules → <code>GET /guardrails/profiles/:id/yaml</code></td></tr><tr><td>Expected</td><td>200 with <code>data.yaml</code> containing valid YAML string</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-21.2</span><span class="tc-title">Non-existent profile — 404</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td><code>GET /guardrails/profiles/00000000.../yaml</code></td></tr><tr><td>Expected</td><td>404 response</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-21.3</span><span class="tc-title">Export contains header comment</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Export any profile</td></tr><tr><td>Expected</td><td>YAML starts with <code># AI Sure — Guardrail Profile</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-21.4</span><span class="tc-title">Exports all rule types</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Create profile with 3 different rule types → export</td></tr><tr><td>Expected</td><td>YAML contains 3 rules with correct hyphenated types</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-21.5</span><span class="tc-title">Round-trip fidelity</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Export → modify name → import → compare rules</td></tr><tr><td>Expected</td><td>Imported rules match original in type, scope, severity, config</td></tr></table>
+        </div>
+    </section>
+
+    <!-- ═══════════ SECTION 22: YAML API Preview ═══════════ -->
+    <section id="s22">
+        <h2><span class="num">22.</span>YAML API — Preview <span class="b b-blue">Phase 3</span></h2>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-22.1</span><span class="tc-title">Preview valid YAML</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td><code>POST /guardrails/preview-yaml</code> with valid YAML</td></tr><tr><td>Expected</td><td><code>valid: true</code>, <code>rules[]</code> with correct types, <code>summary</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-22.2</span><span class="tc-title">Preview invalid YAML — returns errors</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Preview YAML missing <code>guardrail.name</code></td></tr><tr><td>Expected</td><td><code>valid: false</code>, <code>errors</code> contains <code>guardrail.name is required</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-22.3</span><span class="tc-title">Preview detects name conflict</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Create profile "Existing" → preview YAML with <code>name: Existing</code></td></tr><tr><td>Expected</td><td><code>valid: true</code>, <code>nameConflict: true</code></td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-22.4</span><span class="tc-title">Missing yaml field — 400</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td><code>POST /guardrails/preview-yaml</code> with <code>{}</code></td></tr><tr><td>Expected</td><td>400, error: <code>YAML string is required</code></td></tr></table>
+        </div>
+    </section>
+
+    <!-- ═══════════ SECTION 23: YAML UI Frontend ═══════════ -->
+    <section id="s23">
+        <h2><span class="num">23.</span>YAML UI — Frontend <span class="b b-blue">Phase 3</span></h2>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-23.1</span><span class="tc-title">Import YAML button visible</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Open Guardrails page</td></tr><tr><td>Expected</td><td>"Import YAML" button visible next to "Refresh" and "New Profile"</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-23.2</span><span class="tc-title">Import modal with placeholder</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Click "Import YAML"</td></tr><tr><td>Expected</td><td>Modal with file upload, textarea placeholder, Cancel/Preview/Import buttons</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-23.3</span><span class="tc-title">File upload loads content</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Open Import modal → select a <code>.yaml</code> file</td></tr><tr><td>Expected</td><td>File content appears in the textarea</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-23.4</span><span class="tc-title">Preview renders results</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Paste valid YAML → click "Preview"</td></tr><tr><td>Expected</td><td>Green preview panel with profile name, rule count, rule cards</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-23.5</span><span class="tc-title">Error banner on invalid YAML</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Paste invalid YAML → click "Preview"</td></tr><tr><td>Expected</td><td>Red error banner with ❌ and validation messages</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-23.6</span><span class="tc-title">Import button disabled until valid preview</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Open Import modal (no content)</td></tr><tr><td>Expected</td><td>"Import Profile" button disabled. Enabled only after valid preview.</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-23.7</span><span class="tc-title">Import disabled on name conflict</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Preview YAML with existing profile name</td></tr><tr><td>Expected</td><td>⚠️ "Name exists" badge. Import button disabled.</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-23.8</span><span class="tc-title">Export YAML button in profile detail</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Select a profile</td></tr><tr><td>Expected</td><td>"↓ YAML" button visible next to "Add Rule"</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-23.9</span><span class="tc-title">Export modal with Copy and Download</span><span class="tc-priority p0">P0</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Select profile → click "↓ YAML"</td></tr><tr><td>Expected</td><td>Modal with syntax-highlighted YAML, Copy button, Download .yaml button</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-23.10</span><span class="tc-title">Copy button copies to clipboard</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Open export modal → click "Copy"</td></tr><tr><td>Expected</td><td>Button changes to "✅ Copied!" for 2 seconds. Clipboard has YAML.</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-23.11</span><span class="tc-title">Download saves .yaml file</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Open export modal → click "Download .yaml"</td></tr><tr><td>Expected</td><td>Browser downloads <code>.yaml</code> file with profile name slug</td></tr></table>
+        </div>
+
+        <div class="tc-card yaml"><div class="tc-header"><span class="tc-id">TC-23.12</span><span class="tc-title">Textarea change resets preview</span><span class="tc-priority p1">P1</span></div>
+            <table class="tc-table"><tr><td>Steps</td><td>Paste YAML → Preview → modify textarea</td></tr><tr><td>Expected</td><td>Preview panel cleared. Import button disabled.</td></tr></table>
+        </div>
+    </section>
+
+    <!-- ═══════════ FINAL SUMMARY TABLE ═══════════ -->
+    <section id="summary">
+        <h2><span class="num">§</span>Test Summary</h2>
+        <div class="table-wrap">
+            <table class="summary">
+                <thead><tr><th>Category</th><th>P0</th><th>P1</th><th>Total</th></tr></thead>
+                <tbody>
+                    <tr><td>1. Content Filter</td><td>3</td><td>2</td><td>5</td></tr>
+                    <tr><td>2. PII Shield</td><td>4</td><td>5</td><td>9</td></tr>
+                    <tr><td>3. Prompt Injection</td><td>4</td><td>4</td><td>8</td></tr>
+                    <tr><td>4. Topic Boundary</td><td>3</td><td>2</td><td>5</td></tr>
+                    <tr><td>5. Token Limit</td><td>2</td><td>1</td><td>3</td></tr>
+                    <tr><td>6. Custom Regex</td><td>2</td><td>2</td><td>4</td></tr>
+                    <tr><td>7. Output Format</td><td>2</td><td>2</td><td>4</td></tr>
+                    <tr><td>8. Profile CRUD</td><td>6</td><td>1</td><td>7</td></tr>
+                    <tr><td>9. Rule CRUD</td><td>2</td><td>2</td><td>4</td></tr>
+                    <tr><td>10. Agent Assignment</td><td>3</td><td>2</td><td>5</td></tr>
+                    <tr><td>11. Gateway Middleware</td><td>5</td><td>3</td><td>8</td></tr>
+                    <tr><td>12. Test Runner</td><td>4</td><td>3</td><td>7</td></tr>
+                    <tr><td>13. Payload Parsing</td><td>3</td><td>2</td><td>5</td></tr>
+                    <tr><td>14. Stats</td><td>1</td><td>1</td><td>2</td></tr>
+                    <tr><td>15. API Authorization</td><td>5</td><td>0</td><td>5</td></tr>
+                    <tr><td>16. Frontend UI</td><td>5</td><td>8</td><td>13</td></tr>
+                    <tr><td>17. Database Migration</td><td>2</td><td>3</td><td>5</td></tr>
+                    <tr class="yaml-row"><td>18. YAML Parser — Validation</td><td>7</td><td>5</td><td>12</td></tr>
+                    <tr class="yaml-row"><td>19. YAML Parser — Conversion</td><td>3</td><td>6</td><td>9</td></tr>
+                    <tr class="yaml-row"><td>20. YAML API — Import</td><td>5</td><td>2</td><td>7</td></tr>
+                    <tr class="yaml-row"><td>21. YAML API — Export</td><td>4</td><td>1</td><td>5</td></tr>
+                    <tr class="yaml-row"><td>22. YAML API — Preview</td><td>3</td><td>1</td><td>4</td></tr>
+                    <tr class="yaml-row"><td>23. YAML UI — Frontend</td><td>9</td><td>3</td><td>12</td></tr>
+                    <tr><td>Total</td><td>87</td><td>61</td><td>148</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</div>
+
+</body>
+</html>
