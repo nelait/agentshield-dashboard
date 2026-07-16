@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { HiShieldExclamation, HiPlus, HiTrash, HiPencil, HiArrowPath, HiCheckCircle, HiXCircle, HiPlay, HiChevronDown, HiChevronRight, HiXMark, HiEye, HiLink, HiLinkSlash, HiBeaker, HiExclamationTriangle, HiShieldCheck, HiCpuChip, HiFunnel, HiDocumentText, HiLockClosed, HiSignal } from 'react-icons/hi2';
+import { HiShieldExclamation, HiPlus, HiTrash, HiPencil, HiArrowPath, HiCheckCircle, HiXCircle, HiPlay, HiChevronDown, HiChevronRight, HiXMark, HiEye, HiLink, HiLinkSlash, HiBeaker, HiExclamationTriangle, HiShieldCheck, HiCpuChip, HiFunnel, HiDocumentText, HiLockClosed, HiSignal, HiArrowDownTray, HiArrowUpTray, HiClipboardDocument, HiCodeBracket } from 'react-icons/hi2';
 import api from '../api';
 
 const RULE_TYPES = {
@@ -87,6 +87,17 @@ export default function Guardrails() {
     const [testResult, setTestResult] = useState(null);
     const [testRuns, setTestRuns] = useState([]);
     const [expandedTest, setExpandedTest] = useState(null);
+
+    // YAML import/export state (Phase 3)
+    const [showYamlExport, setShowYamlExport] = useState(false);
+    const [yamlExportContent, setYamlExportContent] = useState('');
+    const [yamlExportLoading, setYamlExportLoading] = useState(false);
+    const [showYamlImport, setShowYamlImport] = useState(false);
+    const [yamlImportContent, setYamlImportContent] = useState('');
+    const [yamlImportPreview, setYamlImportPreview] = useState(null);
+    const [yamlImportLoading, setYamlImportLoading] = useState(false);
+    const [yamlImportError, setYamlImportError] = useState('');
+    const [yamlCopied, setYamlCopied] = useState(false);
 
     useEffect(() => { loadData(); }, []);
 
@@ -457,6 +468,71 @@ export default function Guardrails() {
 
     const formatDate = (ts) => ts ? new Date(ts).toLocaleString() : '—';
 
+    // ─── YAML Handlers (Phase 3) ───
+    const handleExportYaml = async (profileId) => {
+        setYamlExportLoading(true);
+        setYamlCopied(false);
+        try {
+            const res = await api.exportGuardrailYaml(profileId);
+            setYamlExportContent(res.data?.yaml || '');
+            setShowYamlExport(true);
+        } catch (err) { alert('Export failed: ' + err.message); }
+        finally { setYamlExportLoading(false); }
+    };
+
+    const handleCopyYaml = () => {
+        navigator.clipboard.writeText(yamlExportContent);
+        setYamlCopied(true);
+        setTimeout(() => setYamlCopied(false), 2000);
+    };
+
+    const handleDownloadYaml = () => {
+        const name = selectedProfile?.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'guardrail';
+        const blob = new Blob([yamlExportContent], { type: 'text/yaml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `${name}.yaml`; a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const handlePreviewYaml = async () => {
+        if (!yamlImportContent.trim()) return;
+        setYamlImportLoading(true);
+        setYamlImportError('');
+        setYamlImportPreview(null);
+        try {
+            const res = await api.previewGuardrailYaml(yamlImportContent);
+            setYamlImportPreview(res.data);
+            if (!res.data?.valid) setYamlImportError(res.data?.errors?.join('\n') || 'Invalid YAML');
+        } catch (err) { setYamlImportError(err.message); }
+        finally { setYamlImportLoading(false); }
+    };
+
+    const handleImportYaml = async () => {
+        setYamlImportLoading(true);
+        setYamlImportError('');
+        try {
+            await api.importGuardrailYaml(yamlImportContent);
+            setShowYamlImport(false);
+            setYamlImportContent('');
+            setYamlImportPreview(null);
+            loadData();
+        } catch (err) { setYamlImportError(err.message); }
+        finally { setYamlImportLoading(false); }
+    };
+
+    const handleYamlFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            setYamlImportContent(ev.target.result);
+            setYamlImportPreview(null);
+            setYamlImportError('');
+        };
+        reader.readAsText(file);
+    };
+
     const TABS = [
         { key: 'profiles', label: '🛡️ Profiles & Rules' },
         { key: 'assign', label: '🔗 Agent Assignments' },
@@ -498,6 +574,9 @@ export default function Guardrails() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                             <h3 style={{ margin: 0, fontSize: 16 }}>Guardrail Profiles</h3>
                             <div style={{ display: 'flex', gap: 6 }}>
+                                <button className="btn btn-secondary btn-sm" onClick={() => { setYamlImportContent(''); setYamlImportPreview(null); setYamlImportError(''); setShowYamlImport(true); }} title="Import from YAML">
+                                    <HiArrowUpTray /> Import YAML
+                                </button>
                                 <button className="btn btn-secondary btn-sm" onClick={loadData}><HiArrowPath /> Refresh</button>
                                 <button className="btn btn-primary btn-sm" onClick={() => { setEditingProfile(null); setProfileForm({ name: '', description: '', mode: 'block' }); setShowProfileModal(true); }}>
                                     <HiPlus /> New Profile
@@ -549,12 +628,18 @@ export default function Guardrails() {
                                             {selectedProfile.description || 'No description'}
                                         </div>
                                     </div>
-                                    <button className="btn btn-primary btn-sm" onClick={() => {
-                                        setRuleForm({ name: '', description: '', ruleType: 'content_filter', scope: 'both', severity: 'high', config: { keywords: [] } });
-                                        setShowRuleModal(true);
-                                    }}>
-                                        <HiPlus /> Add Rule
-                                    </button>
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        <button className="btn btn-secondary btn-sm" onClick={() => handleExportYaml(selectedProfile.id)}
+                                            disabled={yamlExportLoading} title="Export as YAML">
+                                            <HiArrowDownTray /> {yamlExportLoading ? 'Exporting…' : 'YAML'}
+                                        </button>
+                                        <button className="btn btn-primary btn-sm" onClick={() => {
+                                            setRuleForm({ name: '', description: '', ruleType: 'content_filter', scope: 'both', severity: 'high', config: { keywords: [] } });
+                                            setShowRuleModal(true);
+                                        }}>
+                                            <HiPlus /> Add Rule
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* Assigned Agents */}
@@ -970,6 +1055,134 @@ export default function Guardrails() {
                             <button className="btn btn-secondary" onClick={() => setShowRuleModal(false)}>Cancel</button>
                             <button className="btn btn-primary" onClick={handleSaveRule} disabled={!ruleForm.name.trim()}>
                                 Add Rule
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ========== YAML EXPORT MODAL ========== */}
+            {showYamlExport && (
+                <div className="modal-overlay" onClick={() => setShowYamlExport(false)}>
+                    <div className="modal" style={{ maxWidth: 700 }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <HiCodeBracket /> Export Guardrail as YAML
+                            </h3>
+                            <button className="modal-close" onClick={() => setShowYamlExport(false)}><HiXMark /></button>
+                        </div>
+                        <div className="modal-body" style={{ padding: 0 }}>
+                            <div style={{ padding: '12px 20px', background: 'var(--bg-input)', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <span style={{ flex: 1, fontSize: 12, color: 'var(--text-muted)' }}>
+                                    📄 {selectedProfile?.name} — {selectedProfile?.rules?.length || 0} rules
+                                </span>
+                                <button className="btn btn-secondary btn-sm" onClick={handleCopyYaml} style={{ fontSize: 12 }}>
+                                    <HiClipboardDocument /> {yamlCopied ? '✅ Copied!' : 'Copy'}
+                                </button>
+                                <button className="btn btn-primary btn-sm" onClick={handleDownloadYaml} style={{ fontSize: 12 }}>
+                                    <HiArrowDownTray /> Download .yaml
+                                </button>
+                            </div>
+                            <pre style={{
+                                margin: 0, padding: 20, fontSize: 12, lineHeight: 1.6,
+                                background: '#1a1a2e', color: '#e0e0ff', borderRadius: 0,
+                                maxHeight: 450, overflow: 'auto', fontFamily: '"Fira Code", "Cascadia Code", monospace',
+                                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                            }}>
+                                {yamlExportContent}
+                            </pre>
+                        </div>
+                        <div className="modal-footer">
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>
+                                💡 This YAML can be version-controlled in Git and re-imported into AI Sure.
+                            </span>
+                            <button className="btn btn-secondary" onClick={() => setShowYamlExport(false)}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ========== YAML IMPORT MODAL ========== */}
+            {showYamlImport && (
+                <div className="modal-overlay" onClick={() => setShowYamlImport(false)}>
+                    <div className="modal" style={{ maxWidth: 750 }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <HiArrowUpTray /> Import Guardrail from YAML
+                            </h3>
+                            <button className="modal-close" onClick={() => setShowYamlImport(false)}><HiXMark /></button>
+                        </div>
+                        <div className="modal-body">
+                            <div style={{ marginBottom: 12 }}>
+                                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+                                    Upload a .yaml file or paste YAML content below
+                                </label>
+                                <input type="file" accept=".yaml,.yml" onChange={handleYamlFileUpload}
+                                    style={{ fontSize: 12, marginBottom: 8 }} />
+                            </div>
+                            <textarea
+                                value={yamlImportContent}
+                                onChange={e => { setYamlImportContent(e.target.value); setYamlImportPreview(null); setYamlImportError(''); }}
+                                placeholder={`# Paste guardrail YAML here...\nguardrail:\n  name: My Profile\n  mode: block\n  rules:\n    - name: Block SSN\n      type: pii-shield\n      severity: critical`}
+                                style={{
+                                    width: '100%', minHeight: 200, fontFamily: '"Fira Code", monospace',
+                                    fontSize: 12, lineHeight: 1.5, padding: 14, resize: 'vertical',
+                                    background: '#1a1a2e', color: '#e0e0ff', border: '1px solid var(--border-color)',
+                                    borderRadius: 8,
+                                }}
+                            />
+
+                            {/* Validation errors */}
+                            {yamlImportError && (
+                                <div style={{ marginTop: 10, padding: 10, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, fontSize: 12, color: '#ef4444', whiteSpace: 'pre-wrap' }}>
+                                    ❌ {yamlImportError}
+                                </div>
+                            )}
+
+                            {/* Preview panel */}
+                            {yamlImportPreview && yamlImportPreview.valid && (
+                                <div style={{ marginTop: 12, padding: 14, background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--success)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <HiCheckCircle /> Preview Valid
+                                        {yamlImportPreview.nameConflict && (
+                                            <span className="badge yellow" style={{ fontSize: 10, marginLeft: 8 }}>⚠️ Name exists</span>
+                                        )}
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+                                        <div><strong>Profile:</strong> {yamlImportPreview.summary?.profileName}</div>
+                                        <div><strong>Mode:</strong> {yamlImportPreview.summary?.mode}</div>
+                                        <div><strong>Rules:</strong> {yamlImportPreview.summary?.ruleCount}</div>
+                                        <div><strong>Exceptions:</strong> {yamlImportPreview.summary?.exceptionCount}</div>
+                                    </div>
+                                    {yamlImportPreview.rules?.length > 0 && (
+                                        <div style={{ marginTop: 10 }}>
+                                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>Rules to Import</div>
+                                            <div style={{ display: 'grid', gap: 4 }}>
+                                                {yamlImportPreview.rules.map((r, i) => (
+                                                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, padding: '4px 8px', background: 'var(--bg-input)', borderRadius: 6 }}>
+                                                        <span>{RULE_TYPES[r.type]?.icon || '📋'}</span>
+                                                        <span style={{ fontWeight: 600, flex: 1 }}>{r.name}</span>
+                                                        <span className={`badge ${r.severity === 'critical' ? 'red' : r.severity === 'high' ? 'red' : 'yellow'}`} style={{ fontSize: 10 }}>
+                                                            {r.severity}
+                                                        </span>
+                                                        <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{r.scope}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer" style={{ display: 'flex', gap: 8 }}>
+                            <button className="btn btn-secondary" onClick={() => setShowYamlImport(false)}>Cancel</button>
+                            <button className="btn btn-secondary" onClick={handlePreviewYaml}
+                                disabled={!yamlImportContent.trim() || yamlImportLoading}>
+                                {yamlImportLoading ? '⏳ Validating…' : '🔍 Preview'}
+                            </button>
+                            <button className="btn btn-primary" onClick={handleImportYaml}
+                                disabled={!yamlImportPreview?.valid || yamlImportPreview?.nameConflict || yamlImportLoading}>
+                                <HiArrowUpTray /> Import Profile
                             </button>
                         </div>
                     </div>

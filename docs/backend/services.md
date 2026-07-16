@@ -280,6 +280,36 @@ Key-value settings store and compliance rules management.
 
 ---
 
+## GuardrailsService
+
+**File**: [`src/guardrails/service.js`](file:///Users/krishnakollepara/AntiGravityProjects/agentshield/src/guardrails/service.js)
+
+Manages guardrail profiles, rules, agent assignments, test runs, and YAML import/export.
+
+| Method | Description |
+|--------|-------------|
+| `createProfile(data)` | Create a new guardrail profile |
+| `getProfile(id)` | Get profile with rules and assigned agents |
+| `updateProfile(id, data)` | Update profile name/description/mode |
+| `deleteProfile(id)` | Delete profile and cascade rules |
+| `addRule(profileId, ruleData)` | Add a rule to a profile |
+| `deleteRule(ruleId)` | Delete a rule |
+| `assignToAgent(agentId, profileId)` | Assign profile to agent |
+| `unassignFromAgent(agentId, profileId)` | Remove assignment |
+| `evaluate(agentId, content, direction)` | Runtime enforcement — evaluate content against assigned guardrails |
+| `runTests(profileId, testCases)` | Execute test suite against a profile |
+| `exportProfileYaml(profileId)` | **Phase 3** — Export profile + rules as YAML |
+| `importProfileYaml(yamlString, userId)` | **Phase 3** — Import profile from YAML |
+| `previewYaml(yamlString)` | **Phase 3** — Validate/preview YAML without saving |
+
+### YamlGuardrailParser (Utility Module)
+
+**File**: [`src/guardrails/yaml-parser.js`](file:///Users/krishnakollepara/AntiGravityProjects/agentshield/src/guardrails/yaml-parser.js)
+
+Handles bidirectional conversion between YAML format and DB schema. Supports type aliases (e.g., `pii-shield` → `pii_shield`), config flattening for readability, and schema validation.
+
+---
+
 ## Database Layer
 
 > **Source**: [`src/db/index.js`](file:///Users/krishnakollepara/AntiGravityProjects/agentshield/src/db/index.js) (85 lines)

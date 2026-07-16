@@ -294,6 +294,11 @@ const api = {
     getGuardrailTestRun: (id) => request('GET', `/guardrails/test-runs/${id}`),
     getGuardrailStats: () => request('GET', '/guardrails/stats'),
 
+    // Guardrails — YAML Import/Export (Phase 3)
+    exportGuardrailYaml: (profileId) => request('GET', `/guardrails/profiles/${profileId}/yaml`),
+    importGuardrailYaml: (yamlString) => request('POST', '/guardrails/import-yaml', { yaml: yamlString }),
+    previewGuardrailYaml: (yamlString) => request('POST', '/guardrails/preview-yaml', { yaml: yamlString }),
+
     // Observability
     getOtelHealth: () => request('GET', '/observability/health'),
 

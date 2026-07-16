@@ -38,6 +38,23 @@ Only `critical` and `high` severity violations trigger blocking in `block` mode.
 
 Profiles are assigned to agents via a many-to-many relationship. An agent can have multiple profiles, and a profile can be shared across multiple agents. Assignments are optional — agents without guardrails are unaffected.
 
+### YAML Import/Export (Phase 3)
+
+Guardrail profiles can be **exported as YAML** for version control and **imported from YAML** for reproducible, Git-friendly guardrails-as-code workflows.
+
+| Action | API Endpoint | Description |
+|--------|-------------|-------------|
+| **Export** | `GET /guardrails/profiles/:id/yaml` | Downloads profile + rules as a YAML file |
+| **Import** | `POST /guardrails/import-yaml` | Creates a new profile from YAML |
+| **Preview** | `POST /guardrails/preview-yaml` | Validates YAML without saving |
+
+**Dashboard UI**: The Guardrails page includes:
+- **Import YAML** button in the profile list header — opens a modal to paste/upload YAML, preview rules, and import
+- **↓ YAML** button in the profile detail panel — exports the selected profile as downloadable YAML
+
+**Source Files**:
+- YAML Parser: [`src/guardrails/yaml-parser.js`](file:///Users/krishnakollepara/AntiGravityProjects/agentshield/src/guardrails/yaml-parser.js)
+
 ---
 
 ## Rule Types

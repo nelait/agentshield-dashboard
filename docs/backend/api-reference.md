@@ -340,6 +340,60 @@ Endpoints with role requirements use a hierarchical model:
 
 ---
 
+## Guardrails — YAML Import/Export (Phase 3)
+
+| Method | Path | Auth | Role | Description |
+|--------|------|------|------|-------------|
+| `GET` | `/guardrails/profiles/:id/yaml` | ✅ | Any | Export a guardrail profile as YAML |
+| `POST` | `/guardrails/import-yaml` | ✅ | Editor | Import a profile from YAML |
+| `POST` | `/guardrails/preview-yaml` | ✅ | Any | Validate/preview YAML without saving |
+
+### `GET /guardrails/profiles/:id/yaml`
+
+Returns the profile and its rules as a YAML string.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "yaml": "# AI Sure — Guardrail Profile\nguardrail:\n  name: PII Protection\n  ..."
+  }
+}
+```
+
+### `POST /guardrails/import-yaml`
+
+Creates a new profile and rules from a YAML string. Returns 409 if a profile with the same name already exists.
+
+**Request Body:**
+```json
+{
+  "yaml": "guardrail:\n  name: My Profile\n  mode: block\n  rules:\n    - name: Block SSN\n      type: pii-shield\n      severity: critical"
+}
+```
+
+### `POST /guardrails/preview-yaml`
+
+Validates YAML and returns a preview of what would be imported, including name conflict detection.
+
+**Request Body:** Same as import.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "valid": true,
+    "nameConflict": false,
+    "summary": { "profileName": "My Profile", "ruleCount": 1, "mode": "block" },
+    "rules": [{ "name": "Block SSN", "type": "pii_shield", "severity": "critical", "scope": "both" }]
+  }
+}
+```
+
+---
+
 ## Error Response Format
 
 All errors follow a consistent structure:
