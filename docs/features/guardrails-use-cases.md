@@ -308,6 +308,160 @@ All agent protocols (REST, OpenAI, Anthropic, MCP) are supported without protoco
 
 ---
 
+## UC-13: Export Guardrail Profile as YAML
+
+**Primary Actor**: Admin / Editor / Viewer
+**Precondition**: A guardrail profile with at least one rule exists.
+
+### Flow
+
+1. User selects a profile in the **Profiles & Rules** tab.
+2. User clicks the **"↓ YAML"** button in the profile detail header.
+3. Frontend calls `GET /guardrails/profiles/:id/yaml`.
+4. Backend fetches the profile, its rules, and assigned agents.
+5. `YamlGuardrailParser.generateYaml()` converts the DB objects into a human-readable YAML string with a header comment.
+6. A modal opens displaying the generated YAML in a syntax-highlighted code block.
+7. User can:
+   - Click **"Copy"** to copy the YAML to clipboard.
+   - Click **"Download .yaml"** to save as a file (filename derived from profile name).
+
+### Postcondition
+
+The user has a YAML representation of the guardrail profile that can be committed to Git, shared with teammates, or imported into another AI Sure instance.
+
+### Example Output
+
+```yaml
+# AI Sure — Guardrail Profile
+# Generated: 2026-07-16
+guardrail:
+  name: PII & Safety Shield
+  version: '1.0'
+  mode: block
+  scope:
+    - input
+    - output
+  rules:
+    - id: ssn-detection
+      name: SSN Detection
+      type: pii-shield
+      severity: critical
+      scope: both
+      detect:
+        - SSN
+        - Credit Card
+    - id: profanity-blocker
+      name: Profanity Blocker
+      type: content-filter
+      severity: high
+      scope: input
+      keywords:
+        - badword1
+        - badword2
+```
+
+---
+
+## UC-14: Import Guardrail Profile from YAML
+
+**Primary Actor**: Admin / Editor
+**Precondition**: User is authenticated with `editor` or `admin` role.
+
+### Flow
+
+1. User clicks **"Import YAML"** in the Guardrail Profiles header bar.
+2. Import modal opens with two input options:
+   - **File upload**: User selects a `.yaml` or `.yml` file from their filesystem.
+   - **Paste**: User pastes YAML content into the code editor textarea.
+3. User clicks **"🔍 Preview"**.
+4. Frontend calls `POST /guardrails/preview-yaml` with the YAML string.
+5. Backend validates the YAML schema (required fields, valid types, valid severities).
+6. If valid, the preview panel shows:
+   - Profile name, mode, version
+   - Rule count and exception count
+   - A card for each rule showing name, type, severity, and scope
+   - ⚠️ Warning badge if a profile with the same name already exists
+7. User clicks **"Import Profile"**.
+8. Frontend calls `POST /guardrails/import-yaml`.
+9. Backend creates the profile and all rules in the database.
+10. Modal closes and the profile list refreshes.
+
+### Alternative Flows
+
+- **A1 — Invalid YAML syntax**: Parser returns a YAML parse error. Red error banner is displayed. Import button is disabled.
+- **A2 — Schema validation failure**: Missing `guardrail.name` or invalid rule types/severities. Errors listed in the error banner. Import button is disabled.
+- **A3 — Name conflict**: A profile with the same name already exists. Preview shows a ⚠️ "Name exists" badge. Import button is disabled (user must rename in the YAML or delete the existing profile first).
+- **A4 — API error during import**: Backend returns 409 (conflict) or 500. Error message is shown in the error banner.
+
+### Postcondition
+
+A new guardrail profile with all its rules is created from the YAML definition. The profile appears in the profiles list and can be assigned to agents immediately.
+
+---
+
+## UC-15: Preview / Validate YAML Without Saving
+
+**Primary Actor**: Admin / Editor / Viewer
+**Precondition**: User has YAML content to validate.
+
+### Flow
+
+1. User opens the Import YAML modal.
+2. User pastes or uploads YAML content.
+3. User clicks **"🔍 Preview"**.
+4. Frontend calls `POST /guardrails/preview-yaml`.
+5. Backend validates the YAML and returns:
+   - `valid: true/false`
+   - `errors[]` — list of validation error messages
+   - `nameConflict` — whether a profile with the same name exists
+   - `summary` — parsed profile metadata (name, mode, rule count)
+   - `rules[]` — parsed rule previews (name, type, severity, scope)
+6. The preview panel renders the results.
+
+### Postcondition
+
+No data is persisted. The user sees exactly what would be imported before committing.
+
+---
+
+## UC-16: Upload YAML File from Filesystem
+
+**Primary Actor**: Admin / Editor
+**Precondition**: User has a `.yaml` or `.yml` file on their local machine.
+
+### Flow
+
+1. User opens the Import YAML modal.
+2. User clicks **"Choose File"** and selects a `.yaml` or `.yml` file.
+3. The `FileReader` API reads the file content as text.
+4. The YAML content is loaded into the code editor textarea.
+5. The preview state and error state are reset.
+6. User proceeds to preview and/or import as in UC-14.
+
+### Postcondition
+
+The file content is loaded into the editor. No network call is made until the user clicks Preview or Import.
+
+---
+
+## UC-17: YAML Round-Trip Fidelity
+
+**Primary Actor**: Admin / Editor
+**Precondition**: A guardrail profile with rules exists.
+
+### Flow
+
+1. User exports a profile as YAML (UC-13).
+2. User downloads the `.yaml` file.
+3. User imports the same YAML via the Import modal (UC-14) — after changing the profile name to avoid a name conflict.
+4. A new profile is created with identical rules.
+
+### Postcondition
+
+The imported profile's rules match the original profile's rules in type, scope, severity, and configuration. The YAML format preserves full fidelity.
+
+---
+
 ## Use Case Diagram
 
 ```mermaid
@@ -325,6 +479,8 @@ graph LR
     Admin --> UC08[Edit Profile]
     Admin --> UC09[Delete Profile]
     Admin --> UC10[Delete Rule]
+    Admin --> UC13[Export YAML]
+    Admin --> UC14[Import YAML]
 
     Editor --> UC01
     Editor --> UC02
@@ -332,10 +488,17 @@ graph LR
     Editor --> UC04
     Editor --> UC06
     Editor --> UC08
+    Editor --> UC14
+    Editor --> UC13
 
     Viewer --> UC07[View Test History]
     Viewer --> UC11[View Stats]
+    Viewer --> UC13
+    Viewer --> UC15[Preview YAML]
 
     Gateway --> UC05[Enforce Guardrails]
     UC05 --> UC12[Parse Payload]
+    UC14 --> UC15
+    UC14 --> UC16[Upload YAML File]
+    UC13 --> UC17[Round-Trip Fidelity]
 ```

@@ -1,9 +1,10 @@
 # Guardrails — Test Cases
 
-Comprehensive test plan for the AgentShield Guardrails module covering rule evaluators, profile/rule CRUD, agent assignment, gateway middleware enforcement, test runner, and frontend UI.
+Comprehensive test plan for the AgentShield Guardrails module covering rule evaluators, profile/rule CRUD, agent assignment, gateway middleware enforcement, test runner, YAML import/export, and frontend UI.
 
 > **Module under test**:
 > - Backend Service: [`src/guardrails/service.js`](file:///Users/krishnakollepara/AntiGravityProjects/agentshield/src/guardrails/service.js)
+> - YAML Parser: [`src/guardrails/yaml-parser.js`](file:///Users/krishnakollepara/AntiGravityProjects/agentshield/src/guardrails/yaml-parser.js)
 > - API Routes: [`src/admin/routes.js`](file:///Users/krishnakollepara/AntiGravityProjects/agentshield/src/admin/routes.js)
 > - Gateway Middleware: [`src/gateway/middleware/index.js`](file:///Users/krishnakollepara/AntiGravityProjects/agentshield/src/gateway/middleware/index.js) — `guardrailEnforcer`
 > - Frontend: [`src/pages/Guardrails.jsx`](file:///Users/krishnakollepara/AntiGravityProjects/agentshield-dashboard/src/pages/Guardrails.jsx)
@@ -921,10 +922,426 @@ Comprehensive test plan for the AgentShield Guardrails module covering rule eval
 
 ---
 
+## 18. YAML Parser — Validation
+
+### TC-18.1: Valid minimal YAML
+
+| Field | Value |
+|-------|-------|
+| **Input** | `guardrail:\n  name: Test\n  rules:\n    - name: R1\n      type: content-filter\n      severity: high` |
+| **Expected** | `valid: true`, `errors: []` |
+| **Priority** | P0 |
+
+### TC-18.2: Missing top-level "guardrail" key
+
+| Field | Value |
+|-------|-------|
+| **Input** | `name: Test\nrules: []` |
+| **Expected** | `valid: false`, error: `Missing required top-level key: "guardrail"` |
+| **Priority** | P0 |
+
+### TC-18.3: Missing profile name
+
+| Field | Value |
+|-------|-------|
+| **Input** | `guardrail:\n  rules:\n    - name: R1\n      type: pii-shield` |
+| **Expected** | `valid: false`, error contains `guardrail.name is required` |
+| **Priority** | P0 |
+
+### TC-18.4: Invalid mode
+
+| Field | Value |
+|-------|-------|
+| **Input** | `guardrail:\n  name: Test\n  mode: destroy\n  rules:\n    - name: R1\n      type: pii-shield` |
+| **Expected** | `valid: false`, error contains `mode must be one of: block, log_only` |
+| **Priority** | P1 |
+
+### TC-18.5: Invalid rule type
+
+| Field | Value |
+|-------|-------|
+| **Input** | `guardrail:\n  name: Test\n  rules:\n    - name: R1\n      type: invalid-type` |
+| **Expected** | `valid: false`, error contains `invalid type "invalid-type"` |
+| **Priority** | P0 |
+
+### TC-18.6: Invalid severity
+
+| Field | Value |
+|-------|-------|
+| **Input** | `guardrail:\n  name: Test\n  rules:\n    - name: R1\n      type: pii-shield\n      severity: extreme` |
+| **Expected** | `valid: false`, error contains `invalid severity "extreme"` |
+| **Priority** | P1 |
+
+### TC-18.7: Empty rules array
+
+| Field | Value |
+|-------|-------|
+| **Input** | `guardrail:\n  name: Test\n  rules: []` |
+| **Expected** | `valid: false`, error contains `rules is required and must be a non-empty array` |
+| **Priority** | P0 |
+
+### TC-18.8: Type alias resolution — hyphenated format
+
+| Field | Value |
+|-------|-------|
+| **Input** | `guardrail:\n  name: Test\n  rules:\n    - name: R1\n      type: pii-shield` |
+| **Expected** | Parsed rule has `rule_type: "pii_shield"` |
+| **Priority** | P0 |
+
+### TC-18.9: Type alias resolution — underscore format
+
+| Field | Value |
+|-------|-------|
+| **Input** | Rule with `type: prompt_injection` |
+| **Expected** | Parsed rule has `rule_type: "prompt_injection"` |
+| **Priority** | P1 |
+
+### TC-18.10: Type alias resolution — shorthand
+
+| Field | Value |
+|-------|-------|
+| **Input** | Rule with `type: pii` |
+| **Expected** | Parsed rule has `rule_type: "pii_shield"` |
+| **Priority** | P1 |
+
+### TC-18.11: Malformed YAML syntax
+
+| Field | Value |
+|-------|-------|
+| **Input** | `guardrail:\n  name: Test\n    rules: broken indent` |
+| **Expected** | `valid: false`, error starts with `YAML parse error:` |
+| **Priority** | P0 |
+
+### TC-18.12: Exception validation — missing agent
+
+| Field | Value |
+|-------|-------|
+| **Input** | `guardrail:\n  name: Test\n  rules:\n    - name: R1\n      type: pii-shield\n  exceptions:\n    - skip_rules: [R1]` |
+| **Expected** | `valid: false`, error contains `must have an "agent" field` |
+| **Priority** | P1 |
+
+---
+
+## 19. YAML Parser — Conversion
+
+### TC-19.1: Config flattening — content_filter keywords
+
+| Field | Value |
+|-------|-------|
+| **DB Rule** | `{ rule_type: "content_filter", config: { keywords: ["secret", "password"] } }` |
+| **Expected YAML** | Rule has top-level `keywords: ["secret", "password"]` |
+| **Priority** | P0 |
+
+### TC-19.2: Config flattening — token_limit
+
+| Field | Value |
+|-------|-------|
+| **DB Rule** | `{ rule_type: "token_limit", config: { maxTokens: 4096 } }` |
+| **Expected YAML** | Rule has top-level `max_tokens: 4096` |
+| **Priority** | P0 |
+
+### TC-19.3: Config flattening — topic_boundary
+
+| Field | Value |
+|-------|-------|
+| **DB Rule** | `{ rule_type: "topic_boundary", config: { allowedTopics: ["finance"], blockedTopics: ["politics"] } }` |
+| **Expected YAML** | Rule has `allowed_topics: ["finance"]` and `blocked_topics: ["politics"]` |
+| **Priority** | P1 |
+
+### TC-19.4: Config building — YAML keywords to DB config
+
+| Field | Value |
+|-------|-------|
+| **YAML Rule** | `{ type: "content-filter", keywords: ["bad", "words"] }` |
+| **Expected DB** | `{ config: { keywords: ["bad", "words"] } }` |
+| **Priority** | P0 |
+
+### TC-19.5: Config building — YAML pattern to custom_regex config
+
+| Field | Value |
+|-------|-------|
+| **YAML Rule** | `{ type: "custom-regex", pattern: "\\b\\d{3}-\\d{2}-\\d{4}\\b" }` |
+| **Expected DB** | `{ config: { patterns: [{ pattern: "\\b\\d{3}-\\d{2}-\\d{4}\\b", flags: "gi" }] } }` |
+| **Priority** | P1 |
+
+### TC-19.6: Config building — YAML explicit config merge
+
+| Field | Value |
+|-------|-------|
+| **YAML Rule** | `{ type: "pii-shield", config: { customField: true } }` |
+| **Expected DB** | `{ config: { customField: true } }` |
+| **Priority** | P1 |
+
+### TC-19.7: Slugify for YAML IDs
+
+| Field | Value |
+|-------|-------|
+| **Input** | Rule name: `"PII & Safety Shield (v2)"` |
+| **Expected YAML ID** | `"pii-safety-shield-v2"` |
+| **Priority** | P1 |
+
+### TC-19.8: Type inference from fields
+
+| Field | Value |
+|-------|-------|
+| **YAML Rule** | `{ name: "R1", keywords: ["test"] }` (no explicit `type`) |
+| **Expected DB** | `rule_type: "content_filter"` (inferred from `keywords` field) |
+| **Priority** | P1 |
+
+### TC-19.9: Disabled rule preservation
+
+| Field | Value |
+|-------|-------|
+| **YAML Rule** | `{ name: "R1", type: "pii-shield", enabled: false }` |
+| **Expected DB** | `is_enabled: false` |
+| **Priority** | P1 |
+
+---
+
+## 20. YAML API — Import
+
+### TC-20.1: Successful import
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. `POST /guardrails/import-yaml` with valid YAML containing 2 rules |
+| **Expected** | 201 response, profile created, 2 rules created |
+| **Priority** | P0 |
+
+### TC-20.2: Import with duplicate name — 409 conflict
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Create profile "Test" → 2. Import YAML with `name: Test` |
+| **Expected** | 409 response, error: `already exists` |
+| **Priority** | P0 |
+
+### TC-20.3: Import with invalid YAML — 400 error
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. `POST /guardrails/import-yaml` with `{ yaml: "not: valid: yaml: {{" }` |
+| **Expected** | 400 response with validation errors |
+| **Priority** | P0 |
+
+### TC-20.4: Import with missing yaml field — 400 error
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. `POST /guardrails/import-yaml` with `{}` |
+| **Expected** | 400 response, error: `YAML string is required in the "yaml" field` |
+| **Priority** | P0 |
+
+### TC-20.5: Import requires editor role
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Login as viewer → 2. `POST /guardrails/import-yaml` |
+| **Expected** | 403 response |
+| **Priority** | P0 |
+
+### TC-20.6: Import preserves rule sort order
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Import YAML with 3 rules (A, B, C) → 2. Fetch profile |
+| **Expected** | Rules have `sort_order` 0, 1, 2 matching YAML order |
+| **Priority** | P1 |
+
+### TC-20.7: Import with exceptions metadata
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Import YAML with `exceptions: [{ agent: "hr-bot", skip_rules: ["pii-email"] }]` |
+| **Expected** | Response includes `exceptions` array with agent and skip rules |
+| **Priority** | P1 |
+
+---
+
+## 21. YAML API — Export
+
+### TC-21.1: Successful export
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Create profile with 2 rules → 2. `GET /guardrails/profiles/:id/yaml` |
+| **Expected** | 200 response with `data.yaml` containing valid YAML string |
+| **Priority** | P0 |
+
+### TC-21.2: Export non-existent profile — 404
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. `GET /guardrails/profiles/00000000-0000-0000-0000-000000000000/yaml` |
+| **Expected** | 404 response |
+| **Priority** | P0 |
+
+### TC-21.3: Export contains header comment
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Export any profile |
+| **Expected** | YAML starts with `# AI Sure — Guardrail Profile` |
+| **Priority** | P1 |
+
+### TC-21.4: Export includes all rule types
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Create profile with content_filter + pii_shield + token_limit rules → 2. Export |
+| **Expected** | YAML contains 3 rules with correct types (`content-filter`, `pii-shield`, `token-limit`) |
+| **Priority** | P0 |
+
+### TC-21.5: Round-trip fidelity
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Export profile → 2. Modify name in YAML → 3. Import → 4. Compare rules |
+| **Expected** | Imported rules match original in type, scope, severity, and config |
+| **Priority** | P0 |
+
+---
+
+## 22. YAML API — Preview
+
+### TC-22.1: Preview valid YAML
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. `POST /guardrails/preview-yaml` with valid YAML |
+| **Expected** | `valid: true`, `rules[]` with correct types, `summary` with rule count |
+| **Priority** | P0 |
+
+### TC-22.2: Preview invalid YAML — returns errors
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. `POST /guardrails/preview-yaml` with YAML missing `guardrail.name` |
+| **Expected** | `valid: false`, `errors` contains `guardrail.name is required` |
+| **Priority** | P0 |
+
+### TC-22.3: Preview detects name conflict
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Create profile "Existing" → 2. Preview YAML with `name: Existing` |
+| **Expected** | `valid: true`, `nameConflict: true`, `existingProfileId` is set |
+| **Priority** | P0 |
+
+### TC-22.4: Preview with missing yaml field — 400
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. `POST /guardrails/preview-yaml` with `{}` |
+| **Expected** | 400 response, error: `YAML string is required` |
+| **Priority** | P1 |
+
+---
+
+## 23. YAML UI — Frontend
+
+### TC-23.1: Import YAML button visible in profile list header
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Open Guardrails page |
+| **Expected** | "Import YAML" button is visible next to "Refresh" and "New Profile" |
+| **Priority** | P0 |
+
+### TC-23.2: Import modal opens with placeholder
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Click "Import YAML" |
+| **Expected** | Modal opens with file upload input, textarea with placeholder YAML, Cancel/Preview/Import buttons |
+| **Priority** | P0 |
+
+### TC-23.3: File upload loads content into textarea
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Open Import modal → 2. Select a `.yaml` file |
+| **Expected** | File content appears in the textarea |
+| **Priority** | P0 |
+
+### TC-23.4: Preview button calls API and renders results
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Paste valid YAML → 2. Click "Preview" |
+| **Expected** | Green preview panel appears with profile name, rule count, and rule cards |
+| **Priority** | P0 |
+
+### TC-23.5: Preview with errors shows red error banner
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Paste invalid YAML → 2. Click "Preview" |
+| **Expected** | Red error banner with ❌ and validation error messages |
+| **Priority** | P0 |
+
+### TC-23.6: Import button disabled until preview is valid
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Open Import modal (no content) |
+| **Expected** | "Import Profile" button is disabled. Enabled only after successful preview. |
+| **Priority** | P0 |
+
+### TC-23.7: Import button disabled on name conflict
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Preview YAML with a name that already exists |
+| **Expected** | Preview shows ⚠️ "Name exists" badge. Import button remains disabled. |
+| **Priority** | P0 |
+
+### TC-23.8: Export YAML button visible in profile detail
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Select a profile from the list |
+| **Expected** | "↓ YAML" button is visible in the profile detail header, next to "Add Rule" |
+| **Priority** | P0 |
+
+### TC-23.9: Export modal shows YAML with Copy and Download buttons
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Select profile → 2. Click "↓ YAML" |
+| **Expected** | Modal opens with syntax-highlighted YAML, Copy button, Download .yaml button |
+| **Priority** | P0 |
+
+### TC-23.10: Copy button copies YAML to clipboard
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Open export modal → 2. Click "Copy" |
+| **Expected** | Button text changes to "✅ Copied!" for 2 seconds. Clipboard contains YAML. |
+| **Priority** | P1 |
+
+### TC-23.11: Download button saves .yaml file
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Open export modal → 2. Click "Download .yaml" |
+| **Expected** | Browser downloads a `.yaml` file. Filename is derived from profile name (e.g., `pii-safety-shield.yaml`). |
+| **Priority** | P1 |
+
+### TC-23.12: Textarea resets preview on content change
+
+| Field | Value |
+|-------|-------|
+| **Steps** | 1. Paste YAML → 2. Preview → 3. Modify textarea content |
+| **Expected** | Preview panel and error state are cleared. Import button is disabled. |
+| **Priority** | P1 |
+
+---
+
 ## Test Summary
 
 | Category | P0 | P1 | Total |
-|----------|----|----|----|
+|----------|----|----|-------|
 | 1. Content Filter | 3 | 2 | 5 |
 | 2. PII Shield | 4 | 5 | 9 |
 | 3. Prompt Injection | 4 | 4 | 8 |
@@ -942,4 +1359,10 @@ Comprehensive test plan for the AgentShield Guardrails module covering rule eval
 | 15. API Authorization | 5 | 0 | 5 |
 | 16. Frontend UI | 5 | 8 | 13 |
 | 17. Database Migration | 2 | 3 | 5 |
-| **Total** | **56** | **43** | **99** |
+| 18. YAML Parser — Validation | 7 | 5 | 12 |
+| 19. YAML Parser — Conversion | 3 | 6 | 9 |
+| 20. YAML API — Import | 5 | 2 | 7 |
+| 21. YAML API — Export | 4 | 1 | 5 |
+| 22. YAML API — Preview | 3 | 1 | 4 |
+| 23. YAML UI — Frontend | 9 | 3 | 12 |
+| **Total** | **87** | **61** | **148** |
