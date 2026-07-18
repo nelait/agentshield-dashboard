@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { HiSignal, HiChartBar, HiArrowTopRightOnSquare, HiClock, HiFingerPrint, HiCog6Tooth, HiCheckCircle, HiXCircle, HiArrowPath, HiShieldCheck, HiExclamationTriangle, HiBolt } from 'react-icons/hi2';
+import { HiSignal, HiChartBar, HiArrowTopRightOnSquare, HiClock, HiFingerPrint, HiCog6Tooth, HiCheckCircle, HiXCircle, HiArrowPath, HiShieldCheck, HiExclamationTriangle, HiBolt, HiXMark, HiClipboard, HiDocumentText, HiServerStack, HiUser, HiGlobeAlt } from 'react-icons/hi2';
 import api from '../api';
 
 const outcomeStyle = { allowed: 'green', denied: 'red', error: 'yellow', info: 'gray' };
@@ -18,6 +18,8 @@ export default function Observability() {
     const [health, setHealth] = useState(null);
     const [stats, setStats] = useState(null);
     const [recentTraces, setRecentTraces] = useState([]);
+    const [selectedTrace, setSelectedTrace] = useState(null);
+    const [copiedField, setCopiedField] = useState(null);
     const [config, setConfig] = useState({
         jaegerUrl: localStorage.getItem('agentshield_jaeger_url') || 'http://localhost:16686',
         grafanaUrl: localStorage.getItem('agentshield_grafana_url') || '',
@@ -86,6 +88,13 @@ export default function Observability() {
     const handleRefresh = () => {
         setRefreshing(true);
         loadData();
+    };
+
+    const handleCopyField = (value, fieldName) => {
+        navigator.clipboard.writeText(value).then(() => {
+            setCopiedField(fieldName);
+            setTimeout(() => setCopiedField(null), 2000);
+        });
     };
 
     const isHealthy = health?.exporterHealthy;
@@ -357,7 +366,7 @@ export default function Observability() {
                         <span className="badge gray" style={{ fontSize: 11 }}>{recentTraces.length}</span>
                     </div>
                     <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                        Click a Trace ID to view in Jaeger
+                        Click a Trace ID to view details
                     </span>
                 </div>
 
@@ -381,7 +390,8 @@ export default function Observability() {
                         <tbody>
                             {recentTraces.map(trace => (
                                 <tr key={trace.id}
-                                    style={{ transition: 'background 0.15s' }}
+                                    style={{ transition: 'background 0.15s', cursor: 'pointer' }}
+                                    onClick={() => setSelectedTrace(trace)}
                                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(139,92,246,0.04)'}
                                     onMouseLeave={e => e.currentTarget.style.background = ''}
                                 >
@@ -391,23 +401,16 @@ export default function Observability() {
                                     </td>
                                     <td>
                                         <code
-                                            title={`View in Jaeger: ${trace.trace_id}`}
-                                            onClick={() => {
-                                                const hexId = (trace.trace_id || '').replace(/-/g, '').substring(0, 32);
-                                                window.open(`${config.jaegerUrl}/trace/${hexId}`, '_blank');
-                                            }}
                                             style={{
                                                 background: 'var(--bg-input)', padding: '3px 8px',
                                                 borderRadius: 4, fontSize: 12, fontFamily: 'monospace',
-                                                cursor: 'pointer', color: 'var(--accent-primary)',
+                                                color: 'var(--accent-primary)',
                                                 transition: 'all 0.15s', display: 'inline-flex',
                                                 alignItems: 'center', gap: 4,
                                             }}
-                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(99,102,241,0.12)'}
-                                            onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-input)'}
                                         >
                                             {(trace.trace_id || '').substring(0, 16)}…
-                                            <HiArrowTopRightOnSquare style={{ fontSize: 10 }} />
+                                            <HiDocumentText style={{ fontSize: 10 }} />
                                         </code>
                                     </td>
                                     <td><span className="badge gray" style={{ fontSize: 11 }}>{trace.event_type}</span></td>
@@ -429,6 +432,242 @@ export default function Observability() {
                 )}
             </div>
 
+            {/* ═══════════ TRACE DETAIL MODAL ═══════════ */}
+            {selectedTrace && (
+                <div
+                    style={{
+                        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
+                        backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', zIndex: 1000, padding: 20,
+                    }}
+                    onClick={() => setSelectedTrace(null)}
+                >
+                    <div
+                        style={{
+                            background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+                            borderRadius: 16, width: '100%', maxWidth: 720, maxHeight: '90vh',
+                            overflow: 'hidden', display: 'flex', flexDirection: 'column',
+                            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div style={{
+                            padding: '18px 24px', borderBottom: '1px solid var(--border-color)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(99,102,241,0.06) 100%)',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <HiFingerPrint style={{ fontSize: 22, color: 'var(--accent-primary)' }} />
+                                <div>
+                                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+                                        Trace Detail
+                                    </div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                        {new Date(selectedTrace.recorded_at).toLocaleString()}
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedTrace(null)}
+                                style={{
+                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    color: 'var(--text-muted)', fontSize: 20, padding: 4,
+                                    borderRadius: 6, transition: 'all 0.15s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+                            >
+                                <HiXMark />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div style={{ padding: 24, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+                            {/* Outcome Banner */}
+                            <div style={{
+                                padding: '14px 18px', borderRadius: 10,
+                                display: 'flex', alignItems: 'center', gap: 12,
+                                background: selectedTrace.outcome === 'allowed'
+                                    ? 'rgba(34,197,94,0.08)' : selectedTrace.outcome === 'denied'
+                                    ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
+                                border: `1px solid ${selectedTrace.outcome === 'allowed'
+                                    ? 'rgba(34,197,94,0.25)' : selectedTrace.outcome === 'denied'
+                                    ? 'rgba(239,68,68,0.25)' : 'rgba(245,158,11,0.25)'}`,
+                            }}>
+                                {selectedTrace.outcome === 'allowed'
+                                    ? <HiCheckCircle style={{ fontSize: 22, color: 'var(--success)' }} />
+                                    : selectedTrace.outcome === 'denied'
+                                    ? <HiXCircle style={{ fontSize: 22, color: 'var(--danger)' }} />
+                                    : <HiExclamationTriangle style={{ fontSize: 22, color: 'var(--warning)' }} />}
+                                <div>
+                                    <div style={{
+                                        fontSize: 15, fontWeight: 700,
+                                        color: selectedTrace.outcome === 'allowed' ? 'var(--success)' : selectedTrace.outcome === 'denied' ? 'var(--danger)' : 'var(--warning)',
+                                    }}>
+                                        {selectedTrace.outcome === 'allowed' ? 'Request Allowed' : selectedTrace.outcome === 'denied' ? 'Request Denied' : selectedTrace.outcome?.charAt(0).toUpperCase() + selectedTrace.outcome?.slice(1)}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                                        {selectedTrace.event_type} • {selectedTrace.action}
+                                    </div>
+                                </div>
+                                {selectedTrace.latency_ms && (
+                                    <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                                        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{selectedTrace.latency_ms}ms</div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Latency</div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Trace ID Row */}
+                            <div style={{
+                                background: 'var(--bg-input)', border: '1px solid var(--border-color)',
+                                borderRadius: 10, padding: '12px 16px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            }}>
+                                <div>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Trace ID</div>
+                                    <code style={{ fontSize: 13, fontFamily: 'monospace', color: 'var(--accent-primary)', wordBreak: 'break-all' }}>
+                                        {selectedTrace.trace_id || '—'}
+                                    </code>
+                                </div>
+                                <button
+                                    onClick={() => handleCopyField(selectedTrace.trace_id || '', 'traceId')}
+                                    style={{
+                                        background: 'none', border: '1px solid var(--border-color)', cursor: 'pointer',
+                                        color: copiedField === 'traceId' ? 'var(--success)' : 'var(--text-muted)',
+                                        fontSize: 13, padding: '4px 10px', borderRadius: 6,
+                                        display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.15s',
+                                    }}
+                                >
+                                    <HiClipboard /> {copiedField === 'traceId' ? 'Copied!' : 'Copy'}
+                                </button>
+                            </div>
+
+                            {/* Detail Grid */}
+                            <div style={{
+                                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+                            }}>
+                                {[
+                                    { icon: <HiUser style={{ color: 'var(--accent-primary)' }} />, label: 'Actor', value: selectedTrace.actor_email || selectedTrace.actor_id || '—' },
+                                    { icon: <HiServerStack style={{ color: 'var(--accent-primary)' }} />, label: 'Agent', value: selectedTrace.agent_name || selectedTrace.agent_slug || '—' },
+                                    { icon: <HiGlobeAlt style={{ color: 'var(--accent-primary)' }} />, label: 'IP Address', value: selectedTrace.ip_address || '—' },
+                                    { icon: <HiBolt style={{ color: 'var(--accent-primary)' }} />, label: 'Event Type', value: selectedTrace.event_type || '—' },
+                                    { icon: <HiShieldCheck style={{ color: 'var(--accent-primary)' }} />, label: 'Policy', value: selectedTrace.policy_applied || '—' },
+                                    { icon: <HiClock style={{ color: 'var(--accent-primary)' }} />, label: 'Recorded At', value: selectedTrace.recorded_at ? new Date(selectedTrace.recorded_at).toLocaleString() : '—' },
+                                ].map((item, i) => (
+                                    <div key={i} style={{
+                                        background: 'var(--bg-input)', border: '1px solid var(--border-color)',
+                                        borderRadius: 8, padding: '10px 14px',
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                            {item.icon}
+                                            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                                                {item.label}
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+                                            {item.value}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Guardrail Violations */}
+                            {selectedTrace.guardrail_violations && (
+                                <div>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+                                        Guardrail Violations
+                                    </div>
+                                    <div style={{
+                                        background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+                                        borderRadius: 8, padding: 14, fontSize: 13,
+                                    }}>
+                                        <pre style={{ margin: 0, fontFamily: 'monospace', fontSize: 12, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                                            {typeof selectedTrace.guardrail_violations === 'string'
+                                                ? selectedTrace.guardrail_violations
+                                                : JSON.stringify(selectedTrace.guardrail_violations, null, 2)}
+                                        </pre>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Denial Reason */}
+                            {selectedTrace.denial_reason && (
+                                <div>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+                                        Denial Reason
+                                    </div>
+                                    <div style={{
+                                        background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+                                        borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--danger)',
+                                    }}>
+                                        {selectedTrace.denial_reason}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Full JSON */}
+                            <details style={{ marginTop: 4 }}>
+                                <summary style={{
+                                    fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
+                                    textTransform: 'uppercase', letterSpacing: 0.8, cursor: 'pointer',
+                                    padding: '8px 0', userSelect: 'none',
+                                }}>
+                                    Raw Event JSON
+                                </summary>
+                                <div style={{
+                                    background: 'var(--bg-input)', border: '1px solid var(--border-color)',
+                                    borderRadius: 8, padding: 14, marginTop: 8, position: 'relative',
+                                }}>
+                                    <button
+                                        onClick={() => handleCopyField(JSON.stringify(selectedTrace, null, 2), 'json')}
+                                        style={{
+                                            position: 'absolute', top: 8, right: 8,
+                                            background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+                                            cursor: 'pointer', color: copiedField === 'json' ? 'var(--success)' : 'var(--text-muted)',
+                                            fontSize: 11, padding: '3px 8px', borderRadius: 4,
+                                            display: 'flex', alignItems: 'center', gap: 3,
+                                        }}
+                                    >
+                                        <HiClipboard /> {copiedField === 'json' ? '✓' : 'Copy'}
+                                    </button>
+                                    <pre style={{
+                                        margin: 0, fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+                                        color: 'var(--text-secondary)', whiteSpace: 'pre-wrap',
+                                        wordBreak: 'break-all', maxHeight: 300, overflow: 'auto',
+                                        lineHeight: 1.6,
+                                    }}>
+                                        {JSON.stringify(selectedTrace, null, 2)}
+                                    </pre>
+                                </div>
+                            </details>
+
+                            {/* External Jaeger Link (if configured and not localhost) */}
+                            {config.jaegerUrl && !config.jaegerUrl.includes('localhost') && selectedTrace.trace_id && (
+                                <a
+                                    href={`${config.jaegerUrl}/trace/${(selectedTrace.trace_id || '').replace(/-/g, '').substring(0, 32)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                        padding: '10px 16px', borderRadius: 8,
+                                        background: 'var(--bg-input)', border: '1px solid var(--border-color)',
+                                        color: 'var(--accent-primary)', textDecoration: 'none',
+                                        fontSize: 13, fontWeight: 500, transition: 'all 0.15s',
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.background = 'var(--bg-input)'; }}
+                                >
+                                    <HiArrowTopRightOnSquare /> Open in Jaeger UI
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* CSS Animation for pulse */}
             <style>{`
                 @keyframes pulse {
@@ -439,7 +678,9 @@ export default function Observability() {
                     from { transform: rotate(0deg); }
                     to { transform: rotate(360deg); }
                 }
-            `}</style>
+            `}
+            </style>
         </div>
     );
 }
+
