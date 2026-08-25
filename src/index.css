@@ -1157,3 +1157,53 @@ a:hover { color: var(--accent-primary-hover); }
         padding: 20px;
     }
 }
+
+/* ─── Documentation Viewer (iframe) ─── */
+.doc-viewer-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 48px;
+    padding: 0 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    z-index: 100;
+}
+
+.doc-viewer-back,
+.doc-viewer-logout {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.doc-viewer-back:hover,
+.doc-viewer-logout:hover {
+    color: var(--text-primary);
+    border-color: var(--accent-primary);
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.doc-viewer-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.doc-viewer-iframe {
+    width: 100%;
+    height: calc(100vh - 48px);
+    border: none;
+    background: #fff;
+}

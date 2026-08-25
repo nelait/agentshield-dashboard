@@ -1,18 +1,21 @@
-import { useState, useEffect, useCallback } from 'react';
-import { HiLockClosed, HiArrowLeft, HiBookOpen, HiMagnifyingGlass, HiChevronRight, HiArrowRight, HiCheckCircle } from 'react-icons/hi2';
+import { useState, useEffect } from 'react';
+import { HiLockClosed, HiBookOpen, HiArrowRight, HiArrowLeft } from 'react-icons/hi2';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api/v1';
+const DOCS_BASE = '/docs/site/index.html';
 
 export default function Documentation({ onBack }) {
-    const [token, setToken] = useState(() => sessionStorage.getItem('doc_token'));
+    const [authenticated, setAuthenticated] = useState(() => {
+        const stored = sessionStorage.getItem('doc_token');
+        const expiry = sessionStorage.getItem('doc_token_exp');
+        if (stored && expiry && Date.now() < parseInt(expiry)) return true;
+        sessionStorage.removeItem('doc_token');
+        sessionStorage.removeItem('doc_token_exp');
+        return false;
+    });
     const [passcode, setPasscode] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [docTree, setDocTree] = useState([]);
-    const [activeSection, setActiveSection] = useState('overview');
-    const [content, setContent] = useState('');
-    const [docLoading, setDocLoading] = useState(false);
-    const [expandedGroups, setExpandedGroups] = useState({});
     // Access request form
     const [showRequestForm, setShowRequestForm] = useState(false);
     const [reqForm, setReqForm] = useState({ name: '', email: '', company: '', role: '', reason: '' });
@@ -33,66 +36,12 @@ export default function Documentation({ onBack }) {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Invalid passcode');
             sessionStorage.setItem('doc_token', data.data.token);
-            setToken(data.data.token);
+            sessionStorage.setItem('doc_token_exp', String(Date.now() + 24 * 60 * 60 * 1000));
+            setAuthenticated(true);
         } catch (err) {
             setError(err.message);
         }
         setLoading(false);
-    };
-
-    const fetchDocTree = useCallback(async () => {
-        if (!token) return;
-        try {
-            const res = await fetch(`${API_BASE}/public/docs/content?section=index`, {
-                headers: { 'X-Doc-Token': token },
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                if (data.code === 'TOKEN_EXPIRED' || data.code === 'INVALID_TOKEN') {
-                    sessionStorage.removeItem('doc_token');
-                    setToken(null);
-                    return;
-                }
-                return;
-            }
-            setDocTree(data.data.tree || []);
-            // Expand first group
-            if (data.data.tree?.length > 0) {
-                setExpandedGroups({ [data.data.tree[0].id]: true });
-            }
-        } catch { /* silent */ }
-    }, [token]);
-
-    const fetchSection = useCallback(async (section) => {
-        if (!token) return;
-        setDocLoading(true);
-        try {
-            const res = await fetch(`${API_BASE}/public/docs/content?section=${section}`, {
-                headers: { 'X-Doc-Token': token },
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                if (data.code === 'TOKEN_EXPIRED' || data.code === 'INVALID_TOKEN') {
-                    sessionStorage.removeItem('doc_token');
-                    setToken(null);
-                    return;
-                }
-                setContent('> Section not found.');
-                setDocLoading(false);
-                return;
-            }
-            setContent(data.data.content || '');
-        } catch {
-            setContent('> Failed to load section.');
-        }
-        setDocLoading(false);
-    }, [token]);
-
-    useEffect(() => { fetchDocTree(); }, [fetchDocTree]);
-    useEffect(() => { if (token) fetchSection(activeSection); }, [activeSection, token, fetchSection]);
-
-    const toggleGroup = (id) => {
-        setExpandedGroups(g => ({ ...g, [id]: !g[id] }));
     };
 
     const handleRequestAccess = async (e) => {
@@ -118,37 +67,13 @@ export default function Documentation({ onBack }) {
 
     const handleLogout = () => {
         sessionStorage.removeItem('doc_token');
-        setToken(null);
+        sessionStorage.removeItem('doc_token_exp');
+        setAuthenticated(false);
         setPasscode('');
     };
 
-    // Simple markdown to HTML (basic)
-    const renderMarkdown = (md) => {
-        if (!md) return '';
-        let html = md
-            .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-            .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-            .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            .replace(/^\> (.+)$/gm, '<blockquote>$1</blockquote>')
-            .replace(/^- (.+)$/gm, '<li>$1</li>')
-            .replace(/^\| (.+) \|$/gm, (match) => {
-                const cells = match.split('|').filter(c => c.trim()).map(c => c.trim());
-                return '<tr>' + cells.map(c => `<td>${c}</td>`).join('') + '</tr>';
-            })
-            .replace(/^```(\w*)\n([\s\S]*?)^```$/gm, '<pre><code class="lang-$1">$2</code></pre>')
-            .replace(/\n\n/g, '</p><p>')
-            .replace(/<\/li>\n<li>/g, '</li><li>');
-        // Wrap lists
-        html = html.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>');
-        // Wrap tables
-        html = html.replace(/(<tr>[\s\S]*?<\/tr>)/g, (match) => `<table class="doc-table">${match}</table>`);
-        return `<p>${html}</p>`;
-    };
-
     // ─── Passcode Gate ───
-    if (!token) {
+    if (!authenticated) {
         return (
             <div className="doc-gate-page">
                 <nav className="landing-nav">
@@ -214,7 +139,7 @@ export default function Documentation({ onBack }) {
                                             <input className="form-input" type="password" value={passcode}
                                                 onChange={e => setPasscode(e.target.value)}
                                                 placeholder="Enter your documentation passcode"
-                                                style={{ paddingLeft: 36 }} />
+                                                style={{ paddingLeft: 36 }} autoFocus />
                                         </div>
                                     </div>
                                     <button className="btn btn-primary" type="submit" disabled={loading}
@@ -236,56 +161,27 @@ export default function Documentation({ onBack }) {
         );
     }
 
-    // ─── Documentation Viewer ───
+    // ─── Documentation Viewer (iframe to static HTML site) ───
     return (
         <div className="doc-viewer-page">
-            <nav className="landing-nav">
-                <div className="landing-nav-inner">
-                    <div className="landing-logo">
-                        <span className="landing-logo-icon">🛡️</span>
-                        <div>
-                            <span className="landing-logo-text">AI Sure</span>
-                            <span className="landing-logo-sub">Documentation</span>
-                        </div>
-                    </div>
-                    <div className="landing-nav-links">
-                        <button className="landing-nav-link" onClick={onBack}>← Home</button>
-                        <button className="landing-nav-link" onClick={handleLogout} style={{ color: 'var(--text-muted)', fontSize: 12 }}>Logout</button>
-                    </div>
+            <div className="doc-viewer-topbar">
+                <button className="doc-viewer-back" onClick={onBack}>
+                    <HiArrowLeft /> Home
+                </button>
+                <div className="doc-viewer-brand">
+                    <span>🛡️</span>
+                    <span>AI Sure Documentation</span>
                 </div>
-            </nav>
-
-            <div className="doc-layout">
-                {/* Sidebar */}
-                <aside className="doc-sidebar">
-                    <div className="doc-sidebar-inner">
-                        {docTree.map(group => (
-                            <div key={group.id} className="doc-nav-group">
-                                <button className="doc-nav-group-title" onClick={() => toggleGroup(group.id)}>
-                                    <span>{group.icon} {group.title}</span>
-                                    <HiChevronRight className={`doc-chevron ${expandedGroups[group.id] ? 'expanded' : ''}`} />
-                                </button>
-                                {expandedGroups[group.id] && group.children?.map(child => (
-                                    <button key={child.id}
-                                        className={`doc-nav-item ${activeSection === child.id ? 'active' : ''}`}
-                                        onClick={() => setActiveSection(child.id)}>
-                                        {child.title}
-                                    </button>
-                                ))}
-                            </div>
-                        ))}
-                    </div>
-                </aside>
-
-                {/* Content */}
-                <main className="doc-content">
-                    {docLoading ? (
-                        <div className="doc-loading">Loading...</div>
-                    ) : (
-                        <div className="doc-markdown" dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />
-                    )}
-                </main>
+                <button className="doc-viewer-logout" onClick={handleLogout}>
+                    Sign Out
+                </button>
             </div>
+            <iframe
+                src={DOCS_BASE}
+                className="doc-viewer-iframe"
+                title="AI Sure Documentation"
+                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+            />
         </div>
     );
 }
