@@ -29,7 +29,7 @@ const STEPS = [
     { num: '03', title: 'Monitor', desc: 'Every call is metered, audited, and evaluated — with real-time dashboards and alerts.' },
 ];
 
-export default function Landing({ onSignIn }) {
+export default function Landing({ onSignIn, onDocs }) {
     const [demoForm, setDemoForm] = useState({ name: '', email: '', company: '', role: '', message: '' });
     const [demoStatus, setDemoStatus] = useState('');
     const [demoError, setDemoError] = useState('');
@@ -73,6 +73,7 @@ export default function Landing({ onSignIn }) {
                         </div>
                     </div>
                     <div className="landing-nav-links">
+                        <button className="landing-nav-link" onClick={onDocs}>Documentation</button>
                         <button className="landing-nav-link" onClick={scrollToDemo}>Request Demo</button>
                         <button className="btn btn-primary btn-sm" onClick={onSignIn} style={{ borderRadius: 8 }}>
                             Sign In <HiArrowRight />
@@ -258,6 +259,34 @@ export default function Landing({ onSignIn }) {
                                 </form>
                             )}
                         </div>
+                    </div>
+                </div>
+            </section>
+
+
+            {/* Documentation & Resources */}
+            <section className="landing-section" style={{ background: 'linear-gradient(180deg, transparent, rgba(99, 102, 241, 0.03))' }}>
+                <div className="landing-section-inner">
+                    <h2 className="landing-section-title">Documentation & Resources</h2>
+                    <p className="landing-section-subtitle">Explore our comprehensive documentation to understand AI Sure capabilities and integration guides.</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 20, marginTop: 32 }}>
+                        {[
+                            { icon: '🚀', title: 'Getting Started', desc: 'Quick start guide, architecture overview, and 5-minute setup.' },
+                            { icon: '⚡', title: 'Feature Guides', desc: 'Deep-dive into policy engine, guardrails, compliance, and more.' },
+                            { icon: '📡', title: 'API Reference', desc: 'Complete REST API documentation with examples.' },
+                            { icon: '📖', title: 'Deployment Guides', desc: 'Step-by-step deployment on GCP and MCP integration.' },
+                        ].map((d, i) => (
+                            <div key={i} className="landing-feature-card" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={onDocs}>
+                                <span style={{ fontSize: 32, marginBottom: 12, display: 'block' }}>{d.icon}</span>
+                                <h4 style={{ marginBottom: 6, color: 'var(--text-primary)' }}>{d.title}</h4>
+                                <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{d.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{ textAlign: 'center', marginTop: 32 }}>
+                        <button className="btn btn-primary btn-lg" onClick={onDocs} style={{ borderRadius: 12, padding: '12px 32px', fontSize: 15 }}>
+                            Access Documentation <HiArrowRight style={{ marginLeft: 6 }} />
+                        </button>
                     </div>
                 </div>
             </section>

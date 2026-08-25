@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { HiSquares2X2, HiServer, HiShieldCheck, HiShieldExclamation, HiArrowsRightLeft, HiDocumentText, HiCurrencyDollar, HiClipboardDocumentList, HiBeaker, HiArrowRightOnRectangle, HiCog6Tooth, HiChartBar, HiSignal, HiCodeBracket, HiDocumentChartBar, HiUsers } from 'react-icons/hi2';
 import Login from './pages/Login';
 import Landing from './pages/Landing';
+import Documentation from './pages/Documentation';
 import Dashboard from './pages/Dashboard';
 import Agents from './pages/Agents';
 import Policies from './pages/Policies';
@@ -110,6 +111,7 @@ export default function App() {
   });
   const [activePage, setActivePage] = useState('dashboard');
   const [showLogin, setShowLogin] = useState(false);
+  const [showDocs, setShowDocs] = useState(false);
   const [moduleStates, setModuleStates] = useState({});
 
   // Fetch module statuses (on login and every 60s)
@@ -152,10 +154,13 @@ export default function App() {
   }, [handleSessionExpired]);
 
   if (!user) {
+    if (showDocs) {
+      return <Documentation onBack={() => setShowDocs(false)} />;
+    }
     if (showLogin) {
       return <Login onLogin={setUser} onBack={() => setShowLogin(false)} />;
     }
-    return <Landing onSignIn={() => setShowLogin(true)} />;
+    return <Landing onSignIn={() => setShowLogin(true)} onDocs={() => setShowDocs(true)} />;
   }
 
   const currentPage = PAGES[activePage];

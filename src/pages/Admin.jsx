@@ -3,7 +3,7 @@ import {
     HiUsers, HiEnvelope, HiShieldCheck, HiClock, HiCpuChip,
     HiPlus, HiPencil, HiTrash, HiArrowPath, HiLockClosed, HiLockOpen,
     HiCheckCircle, HiXCircle, HiKey, HiXMark, HiEye, HiClipboard,
-    HiExclamationTriangle, HiCheck, HiArrowRightOnRectangle, HiSparkles,
+    HiExclamationTriangle, HiCheck, HiArrowRightOnRectangle, HiSparkles, HiBookOpen,
 } from 'react-icons/hi2';
 import api from '../api';
 
@@ -17,6 +17,7 @@ const TABS = [
     { key: 'activity', label: 'Login Activity', icon: HiClock },
     { key: 'system', label: 'System', icon: HiCpuChip },
     { key: 'demos', label: 'Demo Requests', icon: HiSparkles },
+    { key: 'docAccess', label: 'Doc Access', icon: HiBookOpen },
 ];
 
 const ROLE_COLORS = {
@@ -59,6 +60,7 @@ export default function Admin() {
             {activeTab === 'activity' && <ActivityTab />}
             {activeTab === 'system' && <SystemTab />}
             {activeTab === 'demos' && <DemoRequestsTab />}
+            {activeTab === 'docAccess' && <DocAccessTab />}
         </div>
     );
 }
@@ -1102,6 +1104,204 @@ function DemoRequestsTab() {
                         </div>
                     </div>
                 </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Doc Access Tab ──────────────────────────────
+function DocAccessTab() {
+    const [subTab, setSubTab] = useState('requests');
+    const [requests, setRequests] = useState([]);
+    const [passcodes, setPasscodes] = useState([]);
+    const [accessLog, setAccessLog] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showCreate, setShowCreate] = useState(false);
+    const [newPasscode, setNewPasscode] = useState({ label: '', passcode: '', expires_at: '', max_uses: '' });
+    const [createError, setCreateError] = useState('');
+    const [counts, setCounts] = useState({});
+
+    useEffect(() => { loadData(); }, [subTab]);
+
+    const loadData = async () => {
+        setLoading(true);
+        try {
+            if (subTab === 'requests') {
+                const res = await api.get('/doc-access-requests');
+                setRequests(res.data.data || []);
+                setCounts(res.data.counts || {});
+            } else if (subTab === 'passcodes') {
+                const res = await api.get('/admin/doc-passcodes');
+                setPasscodes(res.data.data || []);
+            } else {
+                const res = await api.get('/admin/doc-access-log');
+                setAccessLog(res.data.data || []);
+            }
+        } catch { /* silent */ }
+        setLoading(false);
+    };
+
+    const handleUpdateRequest = async (id, status, passcode) => {
+        try {
+            await api.put(`/doc-access-requests/${id}`, { status, assigned_passcode: passcode || undefined });
+            loadData();
+        } catch { /* silent */ }
+    };
+
+    const handleCreatePasscode = async (e) => {
+        e.preventDefault();
+        setCreateError('');
+        try {
+            const body = {
+                label: newPasscode.label,
+                passcode: newPasscode.passcode,
+                ...(newPasscode.expires_at ? { expires_at: newPasscode.expires_at } : {}),
+                ...(newPasscode.max_uses ? { max_uses: parseInt(newPasscode.max_uses) } : {}),
+            };
+            await api.post('/admin/doc-passcodes', body);
+            setNewPasscode({ label: '', passcode: '', expires_at: '', max_uses: '' });
+            setShowCreate(false);
+            loadData();
+        } catch (err) {
+            setCreateError(err.response?.data?.error || 'Failed to create');
+        }
+    };
+
+    const handleRevokePasscode = async (id) => {
+        if (!confirm('Revoke this passcode? Users with it will lose access.')) return;
+        try {
+            await api.delete(`/admin/doc-passcodes/${id}`);
+            loadData();
+        } catch { /* silent */ }
+    };
+
+    const SUB_TABS = [
+        { key: 'requests', label: `Access Requests ${counts.new ? `(${counts.new})` : ''}` },
+        { key: 'passcodes', label: 'Passcodes' },
+        { key: 'log', label: 'Access Log' },
+    ];
+
+    return (
+        <div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                {SUB_TABS.map(t => (
+                    <button key={t.key}
+                        className={`btn ${subTab === t.key ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => setSubTab(t.key)}
+                        style={{ borderRadius: 8, fontSize: 12, padding: '6px 14px' }}>
+                        {t.label}
+                    </button>
+                ))}
+            </div>
+
+            {loading ? <div className="loading-skeleton" style={{ height: 200, borderRadius: 12 }} /> : (
+                <>
+                    {/* Access Requests */}
+                    {subTab === 'requests' && (
+                        <div className="admin-table-container">
+                            <table className="admin-table">
+                                <thead><tr><th>Name</th><th>Email</th><th>Company</th><th>Reason</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+                                <tbody>
+                                    {requests.length === 0 ? (
+                                        <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No requests yet</td></tr>
+                                    ) : requests.map(r => (
+                                        <tr key={r.id}>
+                                            <td><strong>{r.name}</strong></td>
+                                            <td>{r.email}</td>
+                                            <td>{r.company || '—'}</td>
+                                            <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.reason || '—'}</td>
+                                            <td><span className={`status-badge status-${r.status === 'new' ? 'warning' : r.status === 'approved' ? 'success' : 'error'}`}>{r.status}</span></td>
+                                            <td>{new Date(r.created_at).toLocaleDateString()}</td>
+                                            <td style={{ display: 'flex', gap: 4 }}>
+                                                {r.status === 'new' && (
+                                                    <>
+                                                        <button className="btn btn-sm" style={{ background: 'var(--success-color)', color: '#fff', borderRadius: 6, fontSize: 11, padding: '4px 10px' }}
+                                                            onClick={() => {
+                                                                const pc = prompt('Enter passcode to send to user (or leave blank to approve without):');
+                                                                handleUpdateRequest(r.id, 'approved', pc);
+                                                            }}>Approve</button>
+                                                        <button className="btn btn-sm" style={{ background: 'var(--error-color)', color: '#fff', borderRadius: 6, fontSize: 11, padding: '4px 10px' }}
+                                                            onClick={() => handleUpdateRequest(r.id, 'rejected')}>Reject</button>
+                                                    </>
+                                                )}
+                                                {r.assigned_passcode && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>📋 {r.assigned_passcode}</span>}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {/* Passcodes */}
+                    {subTab === 'passcodes' && (
+                        <div>
+                            <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)} style={{ marginBottom: 16, borderRadius: 8 }}>
+                                {showCreate ? 'Cancel' : '+ Create Passcode'}
+                            </button>
+                            {showCreate && (
+                                <form onSubmit={handleCreatePasscode} style={{ background: 'var(--card-bg)', padding: 20, borderRadius: 12, marginBottom: 16, border: '1px solid var(--border-color)' }}>
+                                    {createError && <div className="login-error">{createError}</div>}
+                                    <div className="form-row">
+                                        <div className="form-group"><label>Label *</label><input className="form-input" value={newPasscode.label} onChange={e => setNewPasscode(p => ({ ...p, label: e.target.value }))} required placeholder="e.g., Partner Demo — Acme Corp" /></div>
+                                        <div className="form-group"><label>Passcode *</label><input className="form-input" value={newPasscode.passcode} onChange={e => setNewPasscode(p => ({ ...p, passcode: e.target.value }))} required placeholder="e.g., AISURE-DEMO-2026" /></div>
+                                    </div>
+                                    <div className="form-row">
+                                        <div className="form-group"><label>Expires At (optional)</label><input className="form-input" type="datetime-local" value={newPasscode.expires_at} onChange={e => setNewPasscode(p => ({ ...p, expires_at: e.target.value }))} /></div>
+                                        <div className="form-group"><label>Max Uses (optional)</label><input className="form-input" type="number" value={newPasscode.max_uses} onChange={e => setNewPasscode(p => ({ ...p, max_uses: e.target.value }))} placeholder="Unlimited" /></div>
+                                    </div>
+                                    <button className="btn btn-primary" type="submit" style={{ borderRadius: 8 }}>Create Passcode</button>
+                                </form>
+                            )}
+                            <div className="admin-table-container">
+                                <table className="admin-table">
+                                    <thead><tr><th>Label</th><th>Status</th><th>Uses</th><th>Max Uses</th><th>Expires</th><th>Created</th><th>Actions</th></tr></thead>
+                                    <tbody>
+                                        {passcodes.length === 0 ? (
+                                            <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No passcodes created</td></tr>
+                                        ) : passcodes.map(p => (
+                                            <tr key={p.id}>
+                                                <td><strong>{p.label}</strong></td>
+                                                <td><span className={`status-badge ${p.is_active ? 'status-success' : 'status-error'}`}>{p.is_active ? 'Active' : 'Revoked'}</span></td>
+                                                <td>{p.use_count}</td>
+                                                <td>{p.max_uses || '∞'}</td>
+                                                <td>{p.expires_at ? new Date(p.expires_at).toLocaleDateString() : 'Never'}</td>
+                                                <td>{new Date(p.created_at).toLocaleDateString()}</td>
+                                                <td>
+                                                    {p.is_active && (
+                                                        <button className="btn btn-sm" style={{ background: 'var(--error-color)', color: '#fff', borderRadius: 6, fontSize: 11, padding: '4px 10px' }}
+                                                            onClick={() => handleRevokePasscode(p.id)}>Revoke</button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Access Log */}
+                    {subTab === 'log' && (
+                        <div className="admin-table-container">
+                            <table className="admin-table">
+                                <thead><tr><th>Passcode</th><th>IP Address</th><th>Section</th><th>Accessed At</th></tr></thead>
+                                <tbody>
+                                    {accessLog.length === 0 ? (
+                                        <tr><td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No access logs yet</td></tr>
+                                    ) : accessLog.map(l => (
+                                        <tr key={l.id}>
+                                            <td><strong>{l.passcode_label || 'Unknown'}</strong></td>
+                                            <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{l.ip_address}</td>
+                                            <td>{l.section || '—'}</td>
+                                            <td>{new Date(l.accessed_at).toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );

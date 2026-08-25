@@ -928,3 +928,232 @@ a:hover { color: var(--accent-primary-hover); }
   .landing-demo-container { grid-template-columns: 1fr; }
   .landing-hero-ctas { flex-direction: column; align-items: center; }
 }
+
+/* ─── Documentation Portal ─── */
+.doc-gate-page {
+    min-height: 100vh;
+    background: var(--bg-primary);
+}
+
+.doc-gate-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 64px);
+    padding: 32px 20px;
+}
+
+.doc-gate-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.doc-viewer-page {
+    min-height: 100vh;
+    background: var(--bg-primary);
+}
+
+.doc-layout {
+    display: flex;
+    height: calc(100vh - 64px);
+}
+
+.doc-sidebar {
+    width: 280px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+.doc-sidebar-inner {
+    padding: 16px 12px;
+}
+
+.doc-nav-group {
+    margin-bottom: 4px;
+}
+
+.doc-nav-group-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 12px;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.doc-nav-group-title:hover {
+    background: var(--bg-card);
+}
+
+.doc-chevron {
+    transition: transform 0.2s;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.doc-chevron.expanded {
+    transform: rotate(90deg);
+}
+
+.doc-nav-item {
+    display: block;
+    width: 100%;
+    padding: 7px 12px 7px 28px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+
+.doc-nav-item:hover {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.doc-nav-item.active {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1));
+    color: var(--accent-primary);
+    font-weight: 500;
+}
+
+.doc-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 48px;
+    max-width: 900px;
+}
+
+.doc-loading {
+    display: flex;
+    justify-content: center;
+    padding: 60px;
+    color: var(--text-muted);
+}
+
+.doc-markdown {
+    color: var(--text-secondary);
+    line-height: 1.7;
+    font-size: 14px;
+}
+
+.doc-markdown h1 {
+    font-size: 28px;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.doc-markdown h2 {
+    font-size: 20px;
+    color: var(--text-primary);
+    margin-top: 32px;
+    margin-bottom: 12px;
+}
+
+.doc-markdown h3 {
+    font-size: 16px;
+    color: var(--text-primary);
+    margin-top: 24px;
+    margin-bottom: 8px;
+}
+
+.doc-markdown code {
+    background: var(--bg-input);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--accent-primary);
+}
+
+.doc-markdown pre {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 16px 0;
+}
+
+.doc-markdown pre code {
+    background: none;
+    padding: 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.doc-markdown blockquote {
+    border-left: 3px solid var(--accent-primary);
+    padding: 8px 16px;
+    margin: 16px 0;
+    background: rgba(99, 102, 241, 0.05);
+    border-radius: 0 8px 8px 0;
+    color: var(--text-secondary);
+}
+
+.doc-markdown ul {
+    padding-left: 20px;
+    margin: 8px 0;
+}
+
+.doc-markdown li {
+    margin-bottom: 4px;
+}
+
+.doc-markdown table.doc-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+}
+
+.doc-markdown table.doc-table td {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    font-size: 13px;
+}
+
+.doc-markdown table.doc-table tr:first-child {
+    background: var(--bg-secondary);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.doc-markdown strong {
+    color: var(--text-primary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .doc-layout {
+        flex-direction: column;
+    }
+    .doc-sidebar {
+        width: 100%;
+        height: auto;
+        max-height: 240px;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .doc-content {
+        padding: 20px;
+    }
+}
