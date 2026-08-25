@@ -22,6 +22,9 @@ export default function Compliance() {
     const [form, setForm] = useState({ name: '', framework: 'sox', sampleRate: 10, retentionDays: 2190, agentId: '', workflowId: '' });
     const [saving, setSaving] = useState(false);
     const [detailConfigId, setDetailConfigId] = useState(null);
+    const [detailConfig, setDetailConfig] = useState(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [assignAgentId, setAssignAgentId] = useState('');
 
     // ===== SCANS TAB STATE =====
     const [scanConfigId, setScanConfigId] = useState('');
@@ -147,6 +150,44 @@ export default function Compliance() {
         const reader = new FileReader();
         reader.onload = (ev) => setOscalJson(ev.target.result);
         reader.readAsText(file);
+    };
+
+    // ===== CONFIG DETAIL + AGENT ASSIGNMENT =====
+    const loadConfigDetail = async (configId) => {
+        setDetailLoading(true);
+        try {
+            const res = await api.getComplianceConfig(configId);
+            setDetailConfig(res.data || null);
+        } catch (err) { console.error('Failed to load config detail:', err); }
+        finally { setDetailLoading(false); }
+    };
+
+    const handleToggleDetail = async (configId) => {
+        if (detailConfigId === configId) {
+            setDetailConfigId(null);
+            setDetailConfig(null);
+        } else {
+            setDetailConfigId(configId);
+            await loadConfigDetail(configId);
+        }
+    };
+
+    const handleAssignAgent = async (configId) => {
+        if (!assignAgentId) return;
+        try {
+            await api.assignCompliance(assignAgentId, configId);
+            setAssignAgentId('');
+            await loadConfigDetail(configId);
+            await loadAll();
+        } catch (err) { alert('Error assigning agent: ' + err.message); }
+    };
+
+    const handleUnassignAgent = async (agentId, configId) => {
+        try {
+            await api.unassignCompliance(agentId, configId);
+            await loadConfigDetail(configId);
+            await loadAll();
+        } catch (err) { alert('Error unassigning agent: ' + err.message); }
     };
 
     // ===== CONFIG HANDLERS =====
@@ -494,7 +535,13 @@ export default function Compliance() {
                                                     <span className="badge blue">{(c.framework || '').toUpperCase()}</span>
                                                     <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Rate: {(parseFloat(c.sample_rate) * 100).toFixed(0)}%</span>
                                                     <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Retention: {Math.round(c.retention_days / 365)}y</span>
-                                                    <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Target: {getTargetSummary(c)}</span>
+                                                    <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                                                        {parseInt(c.agent_count) > 0 ? (
+                                                            <span className="badge green" style={{ fontSize: 11, padding: '2px 8px' }}>🎯 {c.agent_count} agent{parseInt(c.agent_count) !== 1 ? 's' : ''}</span>
+                                                        ) : (
+                                                            <span className="badge" style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(156,163,175,0.15)' }}>All Agents</span>
+                                                        )}
+                                                    </span>
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -502,7 +549,7 @@ export default function Compliance() {
                                                 <button
                                                     className="btn-icon"
                                                     title="View details"
-                                                    onClick={() => setDetailConfigId(detailConfigId === c.id ? null : c.id)}
+                                                    onClick={() => handleToggleDetail(c.id)}
                                                     style={{ color: detailConfigId === c.id ? 'var(--accent-primary)' : 'var(--text-muted)' }}
                                                 >
                                                     <HiEye style={{ fontSize: 18 }} />
@@ -544,16 +591,10 @@ export default function Compliance() {
                                                             {c.retention_days} days <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 12 }}>({Math.round(c.retention_days / 365)} years)</span>
                                                         </div>
                                                     </div>
-                                                    {/* Target Agent */}
+                                                    {/* Created */}
                                                     <div>
-                                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>Target Agent</div>
-                                                        <div style={{ fontWeight: 600, fontSize: 13 }}>
-                                                            {getTargetName(c, 'agent') ? (
-                                                                <span className="badge green" style={{ fontSize: 12, padding: '3px 10px' }}>{getTargetName(c, 'agent')}</span>
-                                                            ) : (
-                                                                <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>All Agents</span>
-                                                            )}
-                                                        </div>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>Created</div>
+                                                        <div style={{ fontWeight: 500, fontSize: 13 }}>{c.created_at ? new Date(c.created_at).toLocaleString() : '—'}</div>
                                                     </div>
                                                     {/* Target Workflow */}
                                                     <div>
@@ -566,11 +607,76 @@ export default function Compliance() {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    {/* Created */}
-                                                    <div>
-                                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>Created</div>
-                                                        <div style={{ fontWeight: 500, fontSize: 13 }}>{c.created_at ? new Date(c.created_at).toLocaleString() : '—'}</div>
+                                                </div>
+
+                                                {/* ===== Assigned Agents Section ===== */}
+                                                <div style={{ marginTop: 20, borderTop: '1px solid var(--border-color)', paddingTop: 16 }}>
+                                                    <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        🎯 Assigned Agents
                                                     </div>
+
+                                                    {detailLoading ? (
+                                                        <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '8px 0' }}>Loading...</div>
+                                                    ) : (
+                                                        <>
+                                                            {/* Current assignments */}
+                                                            {detailConfig?.assigned_agents?.length > 0 ? (
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                                                                    {detailConfig.assigned_agents.map(agent => (
+                                                                        <div key={agent.id} style={{
+                                                                            display: 'flex', alignItems: 'center', gap: 6,
+                                                                            padding: '6px 12px', borderRadius: 8,
+                                                                            background: 'rgba(16,185,129,0.1)',
+                                                                            border: '1px solid rgba(16,185,129,0.25)',
+                                                                            fontSize: 13,
+                                                                        }}>
+                                                                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: agent.health_status === 'healthy' ? '#10b981' : agent.health_status === 'degraded' ? '#f59e0b' : '#6b7280' }} />
+                                                                            <span style={{ fontWeight: 600 }}>{agent.name}</span>
+                                                                            <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>({agent.protocol})</span>
+                                                                            <button
+                                                                                onClick={() => handleUnassignAgent(agent.id, c.id)}
+                                                                                style={{
+                                                                                    background: 'none', border: 'none', cursor: 'pointer',
+                                                                                    color: 'var(--text-muted)', fontSize: 14, padding: '0 2px',
+                                                                                    lineHeight: 1,
+                                                                                }}
+                                                                                title="Unassign agent"
+                                                                            >✕</button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12, fontStyle: 'italic' }}>
+                                                                    No agents assigned — this config applies to all agents.
+                                                                </div>
+                                                            )}
+
+                                                            {/* Assign new agent */}
+                                                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                                                <select
+                                                                    className="form-select"
+                                                                    value={assignAgentId}
+                                                                    onChange={e => setAssignAgentId(e.target.value)}
+                                                                    style={{ flex: 1, maxWidth: 280, fontSize: 13 }}
+                                                                >
+                                                                    <option value="">Select agent to assign...</option>
+                                                                    {agents
+                                                                        .filter(a => !detailConfig?.assigned_agents?.some(aa => aa.id === a.id))
+                                                                        .map(a => (
+                                                                            <option key={a.id} value={a.id}>{a.name} ({a.protocol})</option>
+                                                                        ))}
+                                                                </select>
+                                                                <button
+                                                                    className="btn btn-primary btn-sm"
+                                                                    onClick={() => handleAssignAgent(c.id)}
+                                                                    disabled={!assignAgentId}
+                                                                    style={{ fontSize: 12 }}
+                                                                >
+                                                                    Assign
+                                                                </button>
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}

@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { HiArrowLeft } from 'react-icons/hi2';
 import api, { setToken, setRefreshToken } from '../api';
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, onBack }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -30,6 +31,11 @@ export default function Login({ onLogin }) {
     return (
         <div className="login-page">
             <div className="login-card">
+                {onBack && (
+                    <button onClick={onBack} className="login-back-link">
+                        <HiArrowLeft /> Back to Home
+                    </button>
+                )}
                 <div className="login-brand">🛡️</div>
                 <h2>AgentShield</h2>
                 <p className="subtitle">Agent Governance Firewall</p>
@@ -47,7 +53,7 @@ export default function Login({ onLogin }) {
                     </div>
                     <button className="btn btn-primary" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }}
                         disabled={loading} type="submit">
-                        {loading ? 'Signing in…' : 'Sign In'}
+                        {loading ? 'Signing in...' : 'Sign In'}
                     </button>
                 </form>
             </div>

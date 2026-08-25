@@ -3,7 +3,7 @@ import {
     HiUsers, HiEnvelope, HiShieldCheck, HiClock, HiCpuChip,
     HiPlus, HiPencil, HiTrash, HiArrowPath, HiLockClosed, HiLockOpen,
     HiCheckCircle, HiXCircle, HiKey, HiXMark, HiEye, HiClipboard,
-    HiExclamationTriangle, HiCheck, HiArrowRightOnRectangle,
+    HiExclamationTriangle, HiCheck, HiArrowRightOnRectangle, HiSparkles,
 } from 'react-icons/hi2';
 import api from '../api';
 
@@ -16,6 +16,7 @@ const TABS = [
     { key: 'roles', label: 'Roles & Permissions', icon: HiShieldCheck },
     { key: 'activity', label: 'Login Activity', icon: HiClock },
     { key: 'system', label: 'System', icon: HiCpuChip },
+    { key: 'demos', label: 'Demo Requests', icon: HiSparkles },
 ];
 
 const ROLE_COLORS = {
@@ -57,6 +58,7 @@ export default function Admin() {
             {activeTab === 'roles' && <RolesTab />}
             {activeTab === 'activity' && <ActivityTab />}
             {activeTab === 'system' && <SystemTab />}
+            {activeTab === 'demos' && <DemoRequestsTab />}
         </div>
     );
 }
@@ -909,3 +911,198 @@ function InfoRow({ label, value }) {
 // Shared styles
 const thStyle = { padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--border-color)' };
 const tdStyle = { padding: '12px 16px' };
+
+// ============================================
+// DEMO REQUESTS TAB
+// ============================================
+const DEMO_STATUS_COLORS = {
+    new: { bg: 'rgba(59,130,246,0.15)', color: '#3b82f6', label: 'New' },
+    contacted: { bg: 'rgba(245,158,11,0.15)', color: '#f59e0b', label: 'Contacted' },
+    closed: { bg: 'rgba(148,163,184,0.15)', color: '#94a3b8', label: 'Closed' },
+};
+
+function DemoRequestsTab() {
+    const [requests, setRequests] = useState([]);
+    const [counts, setCounts] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState('');
+    const [viewRequest, setViewRequest] = useState(null);
+
+    const fetchRequests = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await api.listDemoRequests(filter ? `?status=${filter}` : '');
+            setRequests(res.data || []);
+            setCounts(res.counts || {});
+        } catch (err) {
+            console.error('Failed to fetch demo requests:', err);
+        }
+        setLoading(false);
+    }, [filter]);
+
+    useEffect(() => { fetchRequests(); }, [fetchRequests]);
+
+    const updateStatus = async (id, status) => {
+        try {
+            await api.updateDemoRequestStatus(id, status);
+            fetchRequests();
+            if (viewRequest?.id === id) setViewRequest(r => ({ ...r, status }));
+        } catch (err) {
+            console.error('Failed to update status:', err);
+        }
+    };
+
+    const totalNew = counts.new || 0;
+
+    return (
+        <div>
+            {/* Summary Cards */}
+            <div className="stat-grid" style={{ marginBottom: 20 }}>
+                <div className="stat-card">
+                    <div className="stat-icon info"><HiSparkles /></div>
+                    <div className="stat-content">
+                        <h4>New Requests</h4>
+                        <div className="value">{totalNew}</div>
+                    </div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-icon warning"><HiEnvelope /></div>
+                    <div className="stat-content">
+                        <h4>Contacted</h4>
+                        <div className="value">{counts.contacted || 0}</div>
+                    </div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-icon" style={{ background: 'rgba(148,163,184,0.12)', color: '#94a3b8' }}><HiCheckCircle /></div>
+                    <div className="stat-content">
+                        <h4>Closed</h4>
+                        <div className="value">{counts.closed || 0}</div>
+                    </div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-icon primary"><HiUsers /></div>
+                    <div className="stat-content">
+                        <h4>Total</h4>
+                        <div className="value">{(counts.new || 0) + (counts.contacted || 0) + (counts.closed || 0)}</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="card" style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: 'var(--text-muted)', marginRight: 8 }}>Filter:</span>
+                    {['', 'new', 'contacted', 'closed'].map(s => (
+                        <button key={s} className={`btn btn-sm ${filter === s ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setFilter(s)} style={{ borderRadius: 6 }}>
+                            {s === '' ? 'All' : (DEMO_STATUS_COLORS[s]?.label || s)}
+                        </button>
+                    ))}
+                    <div style={{ flex: 1 }} />
+                    <button className="btn btn-sm btn-secondary" onClick={fetchRequests} style={{ borderRadius: 6 }}>
+                        <HiArrowPath /> Refresh
+                    </button>
+                </div>
+            </div>
+
+            {/* Table */}
+            <div className="card" style={{ padding: 0 }}>
+                {loading ? (
+                    <div className="empty-state"><p>Loading...</p></div>
+                ) : requests.length === 0 ? (
+                    <div className="empty-state">
+                        <div className="icon">📬</div>
+                        <h4>No demo requests yet</h4>
+                        <p>Demo requests from the landing page will appear here.</p>
+                    </div>
+                ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr>
+                                <th style={thStyle}>Name</th>
+                                <th style={thStyle}>Email</th>
+                                <th style={thStyle}>Company</th>
+                                <th style={thStyle}>Role</th>
+                                <th style={thStyle}>Status</th>
+                                <th style={thStyle}>Submitted</th>
+                                <th style={thStyle}>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {requests.map(r => {
+                                const sc = DEMO_STATUS_COLORS[r.status] || DEMO_STATUS_COLORS.new;
+                                return (
+                                    <tr key={r.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                        <td style={tdStyle}>
+                                            <span style={{ fontWeight: 600, cursor: 'pointer', color: 'var(--accent-primary)' }}
+                                                onClick={() => setViewRequest(r)}>{r.name}</span>
+                                        </td>
+                                        <td style={tdStyle}>{r.email}</td>
+                                        <td style={tdStyle}>{r.company || '\u2014'}</td>
+                                        <td style={tdStyle}>{r.role || '\u2014'}</td>
+                                        <td style={tdStyle}>
+                                            <span className="badge" style={{ background: sc.bg, color: sc.color }}>{sc.label}</span>
+                                        </td>
+                                        <td style={{ ...tdStyle, fontSize: 12, color: 'var(--text-muted)' }}>
+                                            {new Date(r.created_at).toLocaleDateString()} {new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </td>
+                                        <td style={tdStyle}>
+                                            <select className="form-select" value={r.status}
+                                                onChange={e => updateStatus(r.id, e.target.value)}
+                                                style={{ padding: '4px 8px', fontSize: 12, width: 'auto', minWidth: 100 }}>
+                                                <option value="new">New</option>
+                                                <option value="contacted">Contacted</option>
+                                                <option value="closed">Closed</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+
+            {/* Detail Modal */}
+            {viewRequest && (
+                <div className="modal-overlay" onClick={() => setViewRequest(null)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+                        <div className="modal-header">
+                            <h3>Demo Request Details</h3>
+                            <button className="btn-icon" onClick={() => setViewRequest(null)}><HiXMark /></button>
+                        </div>
+                        <div className="modal-body">
+                            <InfoRow label="Name" value={viewRequest.name} />
+                            <InfoRow label="Email" value={viewRequest.email} />
+                            <InfoRow label="Company" value={viewRequest.company || '\u2014'} />
+                            <InfoRow label="Role" value={viewRequest.role || '\u2014'} />
+                            <InfoRow label="Status" value={
+                                <span className="badge" style={{ background: DEMO_STATUS_COLORS[viewRequest.status]?.bg, color: DEMO_STATUS_COLORS[viewRequest.status]?.color }}>
+                                    {DEMO_STATUS_COLORS[viewRequest.status]?.label}
+                                </span>
+                            } />
+                            <InfoRow label="Submitted" value={new Date(viewRequest.created_at).toLocaleString()} />
+                            {viewRequest.ip_address && <InfoRow label="IP Address" value={viewRequest.ip_address} />}
+                            <div style={{ padding: '12px 0' }}>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>Message</div>
+                                <div style={{ fontSize: 13, lineHeight: 1.6, background: 'var(--bg-input)', padding: 12, borderRadius: 8 }}>
+                                    {viewRequest.message || 'No message provided.'}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <select className="form-select" value={viewRequest.status}
+                                onChange={e => updateStatus(viewRequest.id, e.target.value)}
+                                style={{ width: 'auto', minWidth: 130 }}>
+                                <option value="new">New</option>
+                                <option value="contacted">Contacted</option>
+                                <option value="closed">Closed</option>
+                            </select>
+                            <button className="btn btn-secondary" onClick={() => setViewRequest(null)}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

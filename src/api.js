@@ -157,11 +157,15 @@ const api = {
     // Compliance
     listComplianceConfigs: () => request('GET', '/compliance/configs'),
     createComplianceConfig: (data) => request('POST', '/compliance/configs', data),
+    getComplianceConfig: (configId) => request('GET', `/compliance/configs/${configId}`),
     listSamples: (params = '') => request('GET', `/compliance/samples?${params}`),
     getComplianceStats: () => request('GET', '/compliance/stats'),
     runComplianceCheck: (configId, samples = null) => request('POST', `/compliance/configs/${configId}/run`, { samples }),
     uploadComplianceSamples: (configId, samples) => request('POST', `/compliance/configs/${configId}/upload-samples`, { samples }),
     getComplianceChecks: (configId) => request('GET', `/compliance/configs/${configId}/checks`),
+    assignCompliance: (agentId, configId) => request('POST', '/compliance/assign', { agentId, configId }),
+    unassignCompliance: (agentId, configId) => request('DELETE', '/compliance/assign', { agentId, configId }),
+    getAgentCompliance: (agentId) => request('GET', `/compliance/agents/${agentId}`),
 
     // OSCAL
     validateOscal: (catalog) => request('POST', '/compliance/oscal/validate', catalog),
@@ -355,6 +359,11 @@ const api = {
 
     // Admin — System Stats
     getSystemStats: () => request('GET', '/admin/system/stats'),
+
+    // Demo Requests
+    listDemoRequests: (params = "") => request("GET", `/demo-requests${params}`),
+    updateDemoRequestStatus: (id, status) => request("PUT", `/demo-requests/${id}`, { status }),
+
 };
 
 export default api;
