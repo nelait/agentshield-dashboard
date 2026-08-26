@@ -1,8 +1,32 @@
-import { useState, useEffect } from 'react';
-import { HiLockClosed, HiBookOpen, HiArrowRight, HiArrowLeft } from 'react-icons/hi2';
+import { useState } from 'react';
+import { HiLockClosed, HiBookOpen, HiArrowRight, HiArrowLeft, HiShieldCheck } from 'react-icons/hi2';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api/v1';
-const DOCS_BASE = '/docs/site/index.html';
+
+const PRODUCTS = [
+    {
+        id: 'agentshield',
+        name: 'AgentShield',
+        tagline: 'AI Agent Governance Firewall',
+        desc: 'Centralized policy enforcement, compliance automation, and complete observability across your entire AI agent fleet.',
+        icon: '🛡️',
+        color: '#6366f1',
+        gradient: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.08))',
+        border: 'rgba(99,102,241,0.3)',
+        docsPath: '/docs/site/index.html',
+    },
+    {
+        id: 'grcstudio',
+        name: 'GRC Studio',
+        tagline: 'Governance, Risk & Compliance Platform',
+        desc: 'Automated policy pipelines, regulatory compliance portals, and risk management for enterprise AI governance.',
+        icon: '⚖️',
+        color: '#10b981',
+        gradient: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(5,150,105,0.08))',
+        border: 'rgba(16,185,129,0.3)',
+        docsPath: '/docs/sitegrc/index.html',
+    },
+];
 
 export default function Documentation({ onBack }) {
     const [authenticated, setAuthenticated] = useState(() => {
@@ -16,6 +40,7 @@ export default function Documentation({ onBack }) {
     const [passcode, setPasscode] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
     // Access request form
     const [showRequestForm, setShowRequestForm] = useState(false);
     const [reqForm, setReqForm] = useState({ name: '', email: '', company: '', role: '', reason: '' });
@@ -69,6 +94,7 @@ export default function Documentation({ onBack }) {
         sessionStorage.removeItem('doc_token');
         sessionStorage.removeItem('doc_token_exp');
         setAuthenticated(false);
+        setSelectedProduct(null);
         setPasscode('');
     };
 
@@ -161,25 +187,78 @@ export default function Documentation({ onBack }) {
         );
     }
 
-    // ─── Documentation Viewer (iframe to static HTML site) ───
+    // ─── Product Selector ───
+    if (!selectedProduct) {
+        return (
+            <div className="doc-gate-page">
+                <nav className="landing-nav">
+                    <div className="landing-nav-inner">
+                        <div className="landing-logo">
+                            <span className="landing-logo-icon">🛡️</span>
+                            <div>
+                                <span className="landing-logo-text">AI Sure</span>
+                                <span className="landing-logo-sub">Documentation</span>
+                            </div>
+                        </div>
+                        <div className="landing-nav-links">
+                            <button className="landing-nav-link" onClick={onBack}>← Home</button>
+                            <button className="landing-nav-link" onClick={handleLogout} style={{ color: 'var(--text-muted)', fontSize: 12 }}>Sign Out</button>
+                        </div>
+                    </div>
+                </nav>
+
+                <div className="doc-selector-container">
+                    <div className="doc-selector-header">
+                        <h2>Choose a Product</h2>
+                        <p>Select the documentation you'd like to explore.</p>
+                    </div>
+                    <div className="doc-selector-grid">
+                        {PRODUCTS.map(product => (
+                            <button
+                                key={product.id}
+                                className="doc-product-card"
+                                onClick={() => setSelectedProduct(product)}
+                                style={{
+                                    '--card-gradient': product.gradient,
+                                    '--card-border': product.border,
+                                    '--card-accent': product.color,
+                                }}
+                            >
+                                <div className="doc-product-icon">{product.icon}</div>
+                                <h3 className="doc-product-name">{product.name}</h3>
+                                <p className="doc-product-tagline">{product.tagline}</p>
+                                <p className="doc-product-desc">{product.desc}</p>
+                                <span className="doc-product-cta">
+                                    View Documentation <HiArrowRight />
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ─── Documentation Viewer (iframe) ───
     return (
         <div className="doc-viewer-page">
             <div className="doc-viewer-topbar">
-                <button className="doc-viewer-back" onClick={onBack}>
-                    <HiArrowLeft /> Home
+                <button className="doc-viewer-back" onClick={() => setSelectedProduct(null)}>
+                    <HiArrowLeft /> All Docs
                 </button>
                 <div className="doc-viewer-brand">
-                    <span>🛡️</span>
-                    <span>AI Sure Documentation</span>
+                    <span>{selectedProduct.icon}</span>
+                    <span>{selectedProduct.name} Documentation</span>
                 </div>
-                <button className="doc-viewer-logout" onClick={handleLogout}>
-                    Sign Out
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="doc-viewer-back" onClick={onBack}>Home</button>
+                    <button className="doc-viewer-logout" onClick={handleLogout}>Sign Out</button>
+                </div>
             </div>
             <iframe
-                src={DOCS_BASE}
+                src={selectedProduct.docsPath}
                 className="doc-viewer-iframe"
-                title="AI Sure Documentation"
+                title={`${selectedProduct.name} Documentation`}
                 sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
             />
         </div>
